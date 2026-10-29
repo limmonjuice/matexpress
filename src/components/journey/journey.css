@@ -1,0 +1,116 @@
+/* The 3D truck travels on this fixed layer, over the section backgrounds and under their words */
+.truck-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+/* Labels that ride on the 3D scene, placed every frame by the scene */
+.scene-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.scene-labels > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+}
+.tag,
+.chip,
+.pin-tag {
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  transition: opacity 0.2s linear;
+  will-change: opacity, transform;
+}
+.tag {
+  display: grid;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.92);
+  color: #121925;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  box-shadow: 0 10px 30px -12px rgb(18 25 37 / 0.45); /* taste-skill-ignore: floats over the 3D scene */
+}
+.tag b {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.tag span {
+  color: #4b5462;
+}
+.tag em {
+  font-style: normal;
+  font-weight: 700;
+  color: #d9691c;
+}
+.chip {
+  display: grid;
+  gap: 2px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: #121925;
+  color: #f5f2ec;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+.chip b {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.chip span {
+  color: #c4ccd8;
+}
+.chip--live b::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #5be37d;
+  vertical-align: 1px;
+  animation: chip-pulse 1.6s ease-in-out infinite;
+}
+@keyframes chip-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.pin-tag {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgb(18 25 37 / 0.85);
+  color: #ffd1a6;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* Narrow screens: the tags shrink to the seller's name, so the four stay apart */
+@media (max-aspect-ratio: 9/10) {
+  .tag {
+    padding: 6px 11px;
+    border-radius: 999px;
+  }
+  .tag b {
+    font-size: 0.75rem;
+  }
+  .tag span,
+  .tag em {
+    display: none;
+  }
+}

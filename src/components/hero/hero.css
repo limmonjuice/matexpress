@@ -1,0 +1,163 @@
+.hx {
+  --hx-ink: #121925;
+  --hx-ink-soft: #2a3240;
+  --hx-accent: #faa363;
+  --hx-accent-deep: #f48b3e;
+  --hx-ratio: 1.7778; /* the photo is 2000 x 1125 */
+  --hx-fx: 0.5; /* where the photo is anchored when it is cropped */
+  --hx-fy: 0.85;
+  position: relative;
+  height: 100vh; /* taste-skill-ignore: fallback for 100svh below */
+  height: 100svh;
+  min-height: 620px;
+  overflow: hidden;
+  container-type: size;
+  background: #cad9e6;
+  color: var(--hx-ink);
+}
+
+/* The photo's box, cropped to cover the hero the way object-fit: cover would */
+.hx-stage {
+  position: absolute;
+  width: max(100cqw, 100cqh * var(--hx-ratio));
+  height: max(100cqh, 100cqw / var(--hx-ratio));
+  left: calc((100cqw - max(100cqw, 100cqh * var(--hx-ratio))) * var(--hx-fx));
+  top: calc((100cqh - max(100cqh, 100cqw / var(--hx-ratio))) * var(--hx-fy));
+}
+.hx-photo {
+  object-fit: cover;
+}
+
+/* ------------------------------------------------------------------ nav */
+
+.hx-nav {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: clamp(28px, 4vw, 64px);
+  padding: clamp(24px, 4.2vh, 44px) clamp(20px, 6.2vw, 104px) 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+.hx-wordmark {
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+}
+.hx-links {
+  display: flex;
+  gap: clamp(28px, 4vw, 64px);
+}
+.hx-start {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.hx-arrow {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* -------------------------------------------------------------- content */
+
+.hx-content {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 300px);
+  justify-content: center;
+  align-items: start;
+  column-gap: clamp(24px, 2.5vw, 40px);
+  padding: clamp(72px, 11.5vh, 120px) clamp(20px, 4vw, 48px) 0;
+}
+.hx-title {
+  font-size: clamp(2.5rem, 0.6rem + 4.7vw, 5.75rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-align: right;
+}
+.hx-title span {
+  display: block;
+  white-space: nowrap;
+}
+.hx-rule {
+  align-self: stretch;
+  width: 3px;
+  margin-block: 0.35em 0.2em;
+  border-radius: 2px;
+  background: var(--hx-accent);
+  font-size: clamp(2.5rem, 0.6rem + 4.7vw, 5.75rem);
+}
+.hx-side {
+  padding-top: clamp(14px, 1.6vw, 26px);
+}
+.hx-side p {
+  max-width: 290px;
+  font-size: clamp(1rem, 0.9rem + 0.25vw, 1.125rem);
+  line-height: 1.5;
+  color: var(--hx-ink-soft);
+}
+.hx-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 26px;
+  height: 52px;
+  padding: 0 26px;
+  border-radius: 999px;
+  background: var(--hx-accent);
+  color: var(--hx-ink);
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.hx a:focus-visible {
+  outline: 3px solid var(--hx-ink);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/* --------------------------------------------------------------- narrow */
+
+@media (max-width: 1023px) {
+  .hx {
+    --hx-fx: 0.62; /* keep the truck in frame */
+  }
+  .hx-content {
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: start;
+    row-gap: 20px;
+    padding-top: clamp(48px, 8vh, 80px);
+  }
+  .hx-title {
+    text-align: left;
+    font-size: clamp(2.25rem, 1rem + 5.4vw, 4.5rem);
+  }
+  .hx-rule {
+    width: 56px;
+    height: 3px;
+    margin: 0;
+  }
+  .hx-side {
+    padding-top: 0;
+  }
+  .hx-side p {
+    max-width: 30rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .hx {
+    --hx-fx: 0.7;
+  }
+  .hx-links {
+    display: none;
+  }
+  .hx-title {
+    font-size: clamp(2rem, 0.6rem + 7.4vw, 2.75rem);
+  }
+}
