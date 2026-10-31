@@ -1,0 +1,143 @@
+import type { Review } from "../types";
+
+// SAMPLE REVIEWS, labelled as samples wherever they show. Nobody wrote these.
+// Delete this file's contents before launch: invented reviews must never reach real buyers.
+
+const REVIEWS: Record<string, Review[]> = {
+  "portland-cement": [
+    {
+      author: "R. Santos",
+      role: "Contractor",
+      rating: 5,
+      date: "Oct 2026",
+      title: "Dry bags, on the day they said",
+      body: "Ordered 120 bags for a slab. All dry, stacked on the pallet the way we asked, and the truck was inside the morning window.",
+      seller: "Bato Aggregates",
+    },
+    {
+      author: "M. Cruz",
+      role: "Site engineer",
+      rating: 4,
+      date: "Sep 2026",
+      title: "Good price at volume",
+      body: "The price drop at 50 bags is real. Worth buying the whole pour at once instead of topping up from the corner store.",
+      seller: "Dalisay Hardware",
+    },
+    {
+      author: "J. Reyes",
+      role: "Foreman",
+      rating: 2,
+      date: "Aug 2026",
+      title: "Two torn bags",
+      body: "Two of forty arrived torn at the seam. The rest were fine, but we lost a little to the rain.",
+      seller: "Tibay Steel",
+      reply: { from: "MatExpress support", body: "Sorry about that. Torn bags are covered: the driver's proof-of-delivery photo is enough, and we replaced both on the next run." },
+    },
+  ],
+  "deformed-rebar": [
+    {
+      author: "A. Villanueva",
+      role: "Civil engineer",
+      rating: 5,
+      date: "Oct 2026",
+      title: "Tagged by diameter, which saved an hour",
+      body: "Mixed order of 12 and 16 mm. Each bundle was tagged, so the crew didn't have to measure anything to sort it.",
+      seller: "Tibay Steel",
+    },
+    {
+      author: "P. Garcia",
+      role: "Contractor",
+      rating: 5,
+      date: "Sep 2026",
+      title: "Bakal is cheaper at 500",
+      body: "Tibay won at small quantities but Bakal Supply beat them once I typed 500. The list re-sorted itself and I saved real money.",
+      seller: "Bakal Supply",
+    },
+    {
+      author: "L. Domingo",
+      role: "Foreman",
+      rating: 3,
+      date: "Jul 2026",
+      title: "Bars were fine, drop-off was tight",
+      body: "A 6 m bar needs room to unload. Tell them about a narrow gate before the truck leaves.",
+      seller: "Dalisay Hardware",
+      reply: { from: "MatExpress support", body: "Thanks for the note. Checkout now asks whether a big truck can reach your gate, so the driver knows before setting off." },
+    },
+  ],
+  "hollow-block": [
+    {
+      author: "E. Bautista",
+      role: "Mason contractor",
+      rating: 5,
+      date: "Oct 2026",
+      title: "Very few broken",
+      body: "1,000 pieces on pallets and I counted six broken. On loose trucks I usually lose a lot more than that.",
+      seller: "Bato Aggregates",
+    },
+    {
+      author: "C. Ramos",
+      role: "Homeowner",
+      rating: 4,
+      date: "Sep 2026",
+      title: "Clear price at every quantity",
+      body: "I could see what 500 would cost before calling anyone. Delivered to a small street in Antipolo with no problem.",
+      seller: "Dalisay Hardware",
+    },
+  ],
+  "washed-sand": [
+    {
+      author: "N. Aquino",
+      role: "Contractor",
+      rating: 5,
+      date: "Oct 2026",
+      title: "Clean, no clay",
+      body: "Rubbed it in my hand on arrival and it came away clean. Dropped right where I marked for the driver.",
+      seller: "Bato Aggregates",
+    },
+    {
+      author: "G. Mendoza",
+      role: "Foreman",
+      rating: 3,
+      date: "Aug 2026",
+      title: "Felt a little short",
+      body: "The pile looked smaller than I expected for 3 m³. It measured close enough, but check before the truck leaves.",
+      seller: "Dalisay Hardware",
+      reply: { from: "Dalisay Hardware", body: "Salamat for raising it. We now send a photo of the loaded truck with the measure before it leaves the yard." },
+    },
+  ],
+  "marine-plywood": [
+    {
+      author: "T. Flores",
+      role: "Carpenter",
+      rating: 5,
+      date: "Sep 2026",
+      title: "Held up for four pours",
+      body: "Oiled them and reused them four times before the edges started to go. Good for the price.",
+      seller: "Kahoy Lumber",
+    },
+  ],
+  "thhn-wire": [
+    {
+      author: "D. Castillo",
+      role: "Electrician",
+      rating: 5,
+      date: "Oct 2026",
+      title: "Sealed boxes, full length",
+      body: "Measured one box out of curiosity and it was the full 150 m. Pulls easily through 3/4 conduit.",
+      seller: "Liwanag Hardware",
+    },
+  ],
+  "cordless-hammer-drill": [
+    {
+      author: "B. Navarro",
+      role: "Contractor",
+      rating: 5,
+      date: "Oct 2026",
+      title: "Goes through block all day",
+      body: "One battery lasted a full morning of anchor holes. The second one is there for the afternoon.",
+      seller: "Dalisay Hardware",
+    },
+  ],
+};
+
+export const reviewsFor = (slug: string): Review[] => REVIEWS[slug] ?? [];

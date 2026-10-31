@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
-import { quickCategories } from "@/lib/catalog/home-content";
+import { quickCategories } from "@/lib/catalog/data/categories";
+import type { SearchEntry } from "@/lib/catalog/types";
+import { plural } from "@/lib/format";
 import { cartCount, useCartStore } from "@/stores/cart-store";
 import { usePreferences } from "@/stores/preferences-store";
 import { CartDrawer } from "./cart-drawer";
@@ -13,7 +15,7 @@ import { HeartIcon, MenuIcon, TruckIcon, UserIcon, CartIcon } from "./icons";
 import { MobileMenu } from "./mobile-menu";
 import { SearchBox } from "./search-box";
 
-export function SiteHeader() {
+export function SiteHeader({ searchIndex }: { searchIndex: SearchEntry[] }) {
   const badge = useRef<HTMLSpanElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -46,7 +48,7 @@ export function SiteHeader() {
             MatExpress
           </Link>
           <DeliverTo className="hm-deliver--header" />
-          <SearchBox />
+          <SearchBox index={searchIndex} />
           <nav className="hm-actions" aria-label="Your account">
             <Link href="/track" className="hm-action hm-action--track">
               <TruckIcon />
@@ -59,7 +61,7 @@ export function SiteHeader() {
             <Link href="/account" className="hm-action hm-action--icon hm-action--account" aria-label="Account">
               <UserIcon />
             </Link>
-            <button type="button" className="hm-cart-btn" onClick={openCart} aria-label={`Cart, ${count} items`}>
+            <button type="button" className="hm-cart-btn" onClick={openCart} aria-label={`Cart, ${plural(count, "item")}`}>
               <CartIcon />
               <span className="hm-cart-word">Cart</span>
               <span ref={badge} className="hm-cart-count">

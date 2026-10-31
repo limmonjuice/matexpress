@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { heroProducts } from "@/lib/catalog/home-content";
+import { heroProducts } from "@/lib/catalog/home-lists";
 import { Hero } from "./hero";
 
 describe("Hero", () => {

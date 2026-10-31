@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { categories } from "@/lib/catalog/home-content";
+import { categories } from "@/lib/catalog/data/categories";
 import { CategoryMenu, HOVER_DELAY } from "./category-menu";
 
 const isOpen = () => screen.getByTestId("category-panel").dataset.open === "true";

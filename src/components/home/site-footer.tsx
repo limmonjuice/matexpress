@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { footerColumns } from "@/lib/catalog/home-content";
 
-const PAYMENTS = ["Visa", "Mastercard", "GCash", "Bank transfer"];
+const PAYMENTS = ["GCash", "Maya", "Visa", "Mastercard", "Online banking"];
 
 export function SiteFooter() {
   return (

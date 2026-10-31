@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { featuredCategories } from "@/lib/catalog/home-content";
+import { featuredCategories } from "@/lib/catalog/data/categories";
 import { ArrowIcon } from "./icons";
 import { SectionHeading } from "./section-heading";
 
@@ -13,7 +13,7 @@ export function CategoryGrid() {
           <Link key={category.slug} href={`/categories/${category.slug}`} className="hm-cat">
             <span className="hm-cat-media">
               <Image
-                src={category.image!}
+                src={category.image}
                 alt=""
                 fill
                 sizes="(max-width: 699px) 46vw, (max-width: 1179px) 23vw, 160px"

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { categories } from "@/lib/catalog/home-content";
+import { categories, subcategoryHref } from "@/lib/catalog/data/categories";
 import { ChevronDownIcon, CloseIcon } from "./icons";
 
 const LINKS = [
@@ -59,7 +59,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
                 </li>
                 {category.subcategories.map((name) => (
                   <li key={name}>
-                    <Link href={`/categories/${category.slug}`} onClick={onClose}>
+                    <Link href={subcategoryHref(category.slug, name)} onClick={onClose}>
                       {name}
                     </Link>
                   </li>

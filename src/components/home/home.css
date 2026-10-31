@@ -1198,9 +1198,35 @@ button:hover > .hm-arrow {
   height: 14px;
   color: var(--hm-accent-deep);
 }
-.hm-card-meta .hm-rating + span::before {
+.hm-card-meta > span + span::before {
   content: "·";
   margin-right: 8px;
+}
+.hm-card-spec {
+  color: var(--hm-ink-soft);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+.hm-price-unit {
+  color: var(--hm-muted);
+  font-size: 0.8125rem;
+}
+.hm-card-arrive {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--hm-ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.hm-card-arrive .hm-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--hm-accent-text);
+}
+.hm-card-arrive[data-out="true"] {
+  color: var(--hm-muted);
 }
 .hm-card-foot {
   display: flex;
@@ -1249,9 +1275,19 @@ button:hover > .hm-arrow {
   cursor: pointer;
   transition: background-color 0.25s, color 0.25s, transform 0.25s var(--hm-ease);
 }
-.hm-add:hover {
+.hm-add:hover:not(:disabled) {
   background: var(--hm-accent-deep);
   transform: scale(1.07);
+}
+.hm-add:disabled {
+  background: var(--hm-tile);
+  color: var(--hm-muted);
+  cursor: not-allowed;
+}
+.hm-btn:disabled {
+  background: var(--hm-tile);
+  color: var(--hm-muted);
+  cursor: not-allowed;
 }
 .hm-add[data-added="true"] {
   background: var(--hm-ink);
@@ -1673,11 +1709,6 @@ button:hover > .hm-arrow {
   padding: 32px;
   text-align: center;
 }
-.hm .hm-cart-empty-icon {
-  width: 44px;
-  height: 44px;
-  color: var(--hm-accent-text);
-}
 .hm-cart-empty p {
   max-width: 19rem;
   color: var(--hm-muted);
@@ -1690,6 +1721,7 @@ button:hover > .hm-arrow {
   border-bottom: 1px solid var(--hm-line);
 }
 .hm-cart-thumb {
+  display: block;
   flex-shrink: 0;
   width: 72px;
   height: 72px;
@@ -1713,42 +1745,14 @@ button:hover > .hm-arrow {
 }
 .hm-cart-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   margin-top: 6px;
 }
 .hm-cart-controls strong {
   margin-left: auto;
   font-weight: 700;
-}
-.hm-stepper {
-  display: flex;
-  align-items: center;
-  border-radius: 999px;
-  background: var(--hm-tile);
-}
-.hm-stepper button {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-.hm-stepper button:hover {
-  background: var(--hm-stone);
-}
-.hm-stepper .hm-icon {
-  width: 16px;
-  height: 16px;
-}
-.hm-stepper span {
-  min-width: 22px;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
 }
 .hm-cart-remove {
   min-height: 44px;
@@ -1767,23 +1771,181 @@ button:hover > .hm-arrow {
   border-top: 1px solid var(--hm-line);
 }
 .hm-cart-delivery {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  margin-top: 10px;
   font-size: 0.875rem;
-  font-weight: 500;
 }
-.hm-cart-meter {
-  height: 6px;
-  margin-top: 8px;
-  overflow: hidden;
+.hm-cart-delivery b {
+  font-weight: 600;
+}
+.hm-cart-delivery span {
+  color: var(--hm-muted);
+  font-size: 0.8125rem;
+}
+.hm-cart-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+/* The truck: the cart, as what it really is. */
+.hm-truck {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.hm-truck--empty {
+  width: 170px;
+  opacity: 0.9;
+}
+.hm-truck-bed {
+  fill: none;
+  stroke: var(--hm-ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: d 0.5s var(--hm-ease);
+}
+.hm-truck-chassis {
+  fill: var(--hm-ink);
+  transition: x 0.5s var(--hm-ease), width 0.5s var(--hm-ease);
+}
+.hm-truck-cab {
+  fill: var(--hm-accent-deep);
+}
+.hm-truck-glass {
+  fill: #fff;
+}
+.hm-truck-cab-group,
+.hm-truck-wheel {
+  transition: transform 0.5s var(--hm-ease);
+}
+.hm-truck-wheel circle:first-child {
+  fill: var(--hm-ink);
+}
+.hm-truck-wheel circle:last-child {
+  fill: #fff;
+}
+.hm-truck-cargo rect {
+  transition: x 0.5s var(--hm-ease), y 0.5s var(--hm-ease), width 0.5s var(--hm-ease), height 0.5s var(--hm-ease);
+  animation: hm-cargo-drop 0.55s var(--hm-rise) both;
+}
+@keyframes hm-cargo-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-22px);
+  }
+}
+.hm-road {
+  --hm-truck-w: 104px;
+  position: relative;
+  height: 46px;
+}
+.hm-road::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-bottom: 3px dashed var(--hm-stone);
+}
+.hm-road-truck {
+  position: absolute;
+  z-index: 1;
+  bottom: 1px;
+  left: calc(var(--hm-progress) * (100% - var(--hm-truck-w) - 16px));
+  width: var(--hm-truck-w);
+  transition: left 0.8s var(--hm-rise);
+}
+.hm-road-flag {
+  position: absolute;
+  right: 0;
+  bottom: 1px;
+  width: 20px;
+  height: 33px;
+}
+.hm-road-flag path:first-child {
+  fill: none;
+  stroke: var(--hm-ink);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.hm-road-flag path:last-child {
+  fill: #d9cfc3;
+  transition: fill 0.4s;
+}
+.hm-road[data-free="true"] .hm-road-flag path:last-child {
+  fill: var(--hm-accent-deep);
+}
+
+/* A seller's initials on their own pale colour. */
+.hm-mark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: transform 0.25s var(--hm-ease);
+}
+.hm-mark[data-large="true"] {
+  width: 72px;
+  height: 72px;
+  font-size: 1.375rem;
+}
+
+/* Buttons for a few, a field for five hundred. */
+.hm-qty {
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
   background: var(--hm-tile);
 }
-.hm-cart-meter i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--hm-accent-deep);
-  transform-origin: left;
-  transition: transform 0.5s var(--hm-ease);
+.hm-qty:focus-within {
+  box-shadow: inset 0 0 0 2px var(--hm-ink);
+}
+.hm-qty button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.hm-qty button:hover:not(:disabled) {
+  background: var(--hm-stone);
+}
+.hm-qty button:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+.hm-qty .hm-icon {
+  width: 16px;
+  height: 16px;
+}
+.hm-qty input {
+  width: 58px;
+  height: 44px;
+  background: transparent;
+  outline: none;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.hm-qty-note {
+  margin-top: 6px;
+  color: var(--hm-accent-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 .hm-cart-total {
   display: flex;

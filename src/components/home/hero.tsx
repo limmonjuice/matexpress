@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { heroProducts } from "@/lib/catalog/home-content";
+import { heroProducts } from "@/lib/catalog/home-lists";
 import { formatPeso } from "@/lib/format";
 import { ArrowIcon } from "./icons";
 
@@ -55,12 +55,12 @@ export function Hero() {
 
           {heroProducts.map((product, i) => (
             <div key={product.slug} className={`hm-float hm-float--${i + 1}`}>
-              <Link href={`/products/${product.slug}`} className="hm-float-card">
+              <Link href={product.href} className="hm-float-card">
                 <Image src={product.image} alt="" width={64} height={64} />
                 <span>
                   <b>{product.name}</b>
                   <small>
-                    {formatPeso(product.priceFrom)} / {product.unit}
+                    {formatPeso(product.price)} / {product.unit}
                   </small>
                 </span>
               </Link>

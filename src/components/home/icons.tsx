@@ -112,6 +112,30 @@ export const ChevronRightIcon = (p: IconProps) => (
     <path d="m9.5 6 6 6-6 6" />
   </Svg>
 );
+export const FilterIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+    <circle cx="16" cy="7" r="2" />
+    <circle cx="8" cy="17" r="2" />
+  </Svg>
+);
+export const StoreIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 10.5V20h16v-9.5M3 9l1.5-5h15L21 9a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0Z" />
+    <path d="M10 20v-5h4v5" />
+  </Svg>
+);
+export const TrashIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13" />
+  </Svg>
+);
+export const AlertIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 4 3 20h18z" />
+    <path d="M12 10v4.5M12 17.5v.01" />
+  </Svg>
+);
 export const VerifiedIcon = ({ className }: IconProps) => (
   <svg className={className ?? "hm-verified"} viewBox="0 0 16 16" aria-hidden="true">
     <circle cx="8" cy="8" r="7" fill="currentColor" />

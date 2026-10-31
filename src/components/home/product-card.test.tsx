@@ -1,17 +1,21 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { getProduct } from "@/lib/catalog/home-content";
-import { cartCount, useCartStore } from "@/stores/cart-store";
+import { toCard } from "@/lib/catalog/card";
+import { productBySlug } from "@/lib/catalog/data/products";
+import { useCartStore } from "@/stores/cart-store";
 import { usePreferences } from "@/stores/preferences-store";
 import { ProductCard } from "./product-card";
 
-const cement = getProduct("portland-cement")!;
+const cement = toCard(productBySlug("portland-cement")!);
+const rebar16 = toCard(productBySlug("deformed-rebar")!, { variantId: "16-mm" });
+const blocks = toCard(productBySlug("hollow-block")!);
+const sand = toCard(productBySlug("washed-sand")!);
 
 describe("ProductCard", () => {
   beforeEach(() => {
     useCartStore.setState({ lines: [] });
-    usePreferences.setState({ saved: [] });
+    usePreferences.setState({ saved: [], area: "Rizal" });
   });
 
   test("shows the price, the old price and the discount", () => {
@@ -21,9 +25,25 @@ describe("ProductCard", () => {
     expect(screen.getByText("5% off")).toBeInTheDocument();
   });
 
-  test("a product with no old price shows no discount", () => {
+  test("a product with no old price shows its price per unit instead", () => {
     render(<ProductCard product={{ ...cement, listPrice: undefined }} />);
     expect(screen.queryByText(/% off/)).not.toBeInTheDocument();
+    expect(screen.getByText("₱6.30/kg")).toBeInTheDocument();
+  });
+
+  test("shows the spec, separate from the name", () => {
+    render(<ProductCard product={cement} />);
+    expect(screen.getByText("40 kg bag, ASTM C150")).toBeInTheDocument();
+  });
+
+  test("says how many sizes there are when there's more than one", () => {
+    render(<ProductCard product={rebar16} />);
+    expect(screen.getByText("4 sizes")).toBeInTheDocument();
+  });
+
+  test("says when it would arrive", () => {
+    render(<ProductCard product={cement} />);
+    expect(screen.getByText(/^Arrives (today|tomorrow|\w{3}, \w{3} \d+)$/)).toBeInTheDocument();
   });
 
   test("a product with no rating still renders", () => {
@@ -47,18 +67,39 @@ describe("ProductCard", () => {
     expect(screen.getByText("1 seller")).toBeInTheDocument();
   });
 
-  test("the name links to the product", () => {
-    render(<ProductCard product={cement} />);
+  test("the name links to the product, on the shown size", () => {
+    const { unmount } = render(<ProductCard product={cement} />);
     expect(screen.getByRole("link", { name: cement.name })).toHaveAttribute("href", "/products/portland-cement");
+    unmount();
+    render(<ProductCard product={rebar16} />);
+    expect(screen.getByRole("link", { name: rebar16.name })).toHaveAttribute("href", "/products/deformed-rebar?size=16-mm");
   });
 
-  test("adding puts the top seller's offer in the cart", async () => {
+  test("adding puts the shown seller's offer in the cart", async () => {
     render(<ProductCard product={cement} />);
     await userEvent.click(screen.getByRole("button", { name: `Add: ${cement.name}` }));
     const { lines } = useCartStore.getState();
-    expect(cartCount(lines)).toBe(1);
-    expect(lines[0]).toMatchObject({ price: 252, seller: cement.topSeller });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ price: 252, seller: "Dalisay Hardware", quantity: 1 });
     expect(screen.getByRole("status")).toHaveTextContent(`${cement.name} added to cart`);
+  });
+
+  test("adding respects the minimum order", async () => {
+    render(<ProductCard product={blocks} />);
+    await userEvent.click(screen.getByRole("button", { name: `Add: ${blocks.name}` }));
+    expect(useCartStore.getState().lines[0].quantity).toBe(50);
+  });
+
+  test("sand starts at one cubic metre", async () => {
+    render(<ProductCard product={sand} />);
+    await userEvent.click(screen.getByRole("button", { name: `Add: ${sand.name}` }));
+    expect(useCartStore.getState().lines[0].quantity).toBe(1);
+  });
+
+  test("out of stock can't be added and says so", () => {
+    render(<ProductCard product={{ ...cement, inStock: false }} />);
+    expect(screen.getByRole("button", { name: `Add: ${cement.name}` })).toBeDisabled();
+    expect(screen.getByText("Out of stock")).toBeInTheDocument();
   });
 
   test("the heart saves and unsaves", async () => {

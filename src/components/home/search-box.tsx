@@ -7,11 +7,13 @@ import { useRouter } from "next/navigation";
 import { formatPeso } from "@/lib/format";
 import { popularSearches } from "@/lib/catalog/home-content";
 import { searchProducts } from "@/lib/catalog/search";
+import type { SearchEntry } from "@/lib/catalog/types";
 import { ArrowIcon, SearchIcon } from "./icons";
 
 const searchHref = (query: string) => `/search?q=${encodeURIComponent(query)}`;
+const productLink = (slug: string, size?: string) => `/products/${slug}${size ? `?size=${size}` : ""}`;
 
-export function SearchBox() {
+export function SearchBox({ index }: { index: SearchEntry[] }) {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -19,7 +21,7 @@ export function SearchBox() {
   const [open, setOpen] = useState(false);
 
   const trimmed = query.trim();
-  const results = useMemo(() => searchProducts(trimmed), [trimmed]);
+  const { items: results, sizeBySlug } = useMemo(() => searchProducts(index, trimmed), [index, trimmed]);
 
   // Close when a press lands anywhere outside the search.
   useEffect(() => {
@@ -97,7 +99,7 @@ export function SearchBox() {
           <ul className="hm-search-results">
             {results.map((product) => (
               <li key={product.slug}>
-                <Link href={`/products/${product.slug}`} onClick={() => setOpen(false)}>
+                <Link href={productLink(product.slug, sizeBySlug[product.slug])} onClick={() => setOpen(false)}>
                   <span className="hm-search-thumb">
                     <Image src={product.image} alt="" width={56} height={56} />
                   </span>
@@ -106,7 +108,7 @@ export function SearchBox() {
                     <small>{product.spec}</small>
                   </span>
                   <span className="hm-search-price">
-                    {formatPeso(product.priceFrom)}
+                    {formatPeso(product.price)}
                     <small>/ {product.unit}</small>
                   </span>
                 </Link>

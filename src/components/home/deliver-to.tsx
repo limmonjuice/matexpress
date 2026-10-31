@@ -1,6 +1,6 @@
 "use client";
 
-import { deliveryAreas } from "@/lib/catalog/home-content";
+import { deliveryAreas } from "@/lib/delivery";
 import { usePreferences } from "@/stores/preferences-store";
 import { ChevronDownIcon, PinIcon } from "./icons";
 

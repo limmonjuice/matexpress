@@ -5,7 +5,6 @@ import { render, screen } from "@testing-library/react";
 import HomePage from "./page";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
-vi.mock("@/components/smooth-scroll", () => ({ SmoothScroll: () => null }));
 vi.mock("@/components/home/home-motion", () => ({ HomeMotion: () => null }));
 vi.stubGlobal(
   "ResizeObserver",
@@ -36,7 +35,7 @@ describe("Home page", () => {
   });
 
   test("the store never pulls in the 3D truck", () => {
-    const files = [...sourcesIn("src/components/home"), "src/app/page.tsx"];
+    const files = [...sourcesIn("src/components/home"), "src/app/(store)/page.tsx"];
     for (const file of files) {
       const source = readFileSync(file, "utf8");
       expect(source, file).not.toMatch(/components\/journey|from "three"|@react-three/);

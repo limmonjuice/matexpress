@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useCartStore, type CartLine } from "@/stores/cart-store";
+import type { LineData } from "@/lib/catalog/types";
+import { useCartStore } from "@/stores/cart-store";
 import { CheckIcon, PlusIcon } from "./icons";
 
 /** How long the button shows its tick after an add. */
 const CONFIRM_MS = 1400;
 
 type Props = {
-  line: Omit<CartLine, "quantity">;
+  line: LineData;
   /** A round icon button, or a full-width one with this text. */
   label?: string;
+  disabled?: boolean;
 };
 
-export function AddToCartButton({ line, label }: Props) {
+export function AddToCartButton({ line, label, disabled }: Props) {
   const add = useCartStore((s) => s.add);
   const [added, setAdded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -34,6 +36,7 @@ export function AddToCartButton({ line, label }: Props) {
         className={label ? "hm-btn hm-btn--accent hm-btn--small hm-add-wide" : "hm-add"}
         data-added={added}
         aria-label={`${label ?? "Add"}: ${line.name}`}
+        disabled={disabled}
         onClick={onAdd}
       >
         {added ? <CheckIcon /> : label ? null : <PlusIcon />}

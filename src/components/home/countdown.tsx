@@ -7,7 +7,7 @@ import { ArrowIcon } from "./icons";
 const pad = (value: number) => String(value).padStart(2, "0");
 
 /** The deal's timer and its button. A deal that has ended sends people to this week's deals instead. */
-export function Countdown({ endsAt, href }: { endsAt: string; href: string }) {
+export function Countdown({ endsAt, href }: { endsAt: string; href?: string }) {
   const { days, hours, minutes, seconds, expired, ready } = useCountdown(endsAt);
 
   if (ready && expired) {
@@ -36,9 +36,11 @@ export function Countdown({ endsAt, href }: { endsAt: string; href: string }) {
           </div>
         ))}
       </div>
-      <Link href={href} className="hm-btn hm-btn--ink">
-        Shop the deal <ArrowIcon />
-      </Link>
+      {href && (
+        <Link href={href} className="hm-btn hm-btn--ink">
+          Shop the deal <ArrowIcon />
+        </Link>
+      )}
     </>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { categories } from "@/lib/catalog/home-content";
+import { categories, subcategoryHref } from "@/lib/catalog/data/categories";
 import { ArrowIcon, ChevronDownIcon, MenuIcon } from "./icons";
 
 /** Long enough that a pointer passing over the button doesn't flash the menu open. */
@@ -66,7 +66,7 @@ export function CategoryMenu() {
               <ul>
                 {category.subcategories.map((name) => (
                   <li key={name}>
-                    <Link href={`/categories/${category.slug}`} onClick={() => setOpen(false)}>
+                    <Link href={subcategoryHref(category.slug, name)} onClick={() => setOpen(false)}>
                       {name}
                     </Link>
                   </li>

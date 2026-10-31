@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FREE_DELIVERY_OVER } from "@/lib/catalog/home-content";
-import { formatPeso } from "@/lib/format";
-import { cartTotal, useCartStore } from "@/stores/cart-store";
-import { ArrowIcon, CartIcon, CloseIcon, MinusIcon, PlusIcon } from "./icons";
+import { LoadTruck, TruckRoad } from "@/components/cart/load-truck";
+import { QuantityInput } from "@/components/cart/quantity-input";
+import { FREE_DELIVERY_OVER } from "@/lib/delivery";
+import { formatPeso, plural } from "@/lib/format";
+import { formatWeight, loadFor } from "@/lib/load";
+import { cartTotal, cartWeight, lineCost, useCartStore } from "@/stores/cart-store";
+import { ArrowIcon, CloseIcon } from "./icons";
 
 export function CartDrawer() {
   const panel = useRef<HTMLDivElement>(null);
@@ -15,10 +18,12 @@ export function CartDrawer() {
   const close = useCartStore((s) => s.close);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const remove = useCartStore((s) => s.remove);
+  const [notes, setNotes] = useState<Record<string, string | undefined>>({});
 
   const total = cartTotal(lines);
   const toFree = FREE_DELIVERY_OVER - total;
-  const sellers = new Set(lines.map((l) => l.seller).filter(Boolean)).size;
+  const weight = cartWeight(lines);
+  const sellers = new Set(lines.map((l) => l.sellerSlug)).size;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -49,8 +54,8 @@ export function CartDrawer() {
 
         {lines.length === 0 ? (
           <div className="hm-cart-empty">
-            <CartIcon className="hm-cart-empty-icon" />
-            <p>Your cart is empty. Add materials from any seller and check out once.</p>
+            <LoadTruck lines={[]} className="hm-truck hm-truck--empty" />
+            <p>Your truck is empty. Load it from any seller, and check out once.</p>
             <Link href="/categories" className="hm-link" onClick={close}>
               Explore materials <ArrowIcon />
             </Link>
@@ -60,60 +65,61 @@ export function CartDrawer() {
             <ul className="hm-drawer-scroll hm-cart-lines">
               {lines.map((line) => (
                 <li key={line.id}>
-                  <span className="hm-cart-thumb">
-                    {line.image && <Image src={line.image} alt="" width={72} height={72} />}
-                  </span>
+                  <Link href={`/products/${line.slug}?size=${line.variantId}`} className="hm-cart-thumb" onClick={close} aria-label={line.name}>
+                    <Image src={line.image} alt="" width={72} height={72} />
+                  </Link>
                   <div className="hm-cart-info">
-                    <b>{line.name}</b>
+                    <b>
+                      {line.name}
+                      {line.variantLabel ? `, ${line.variantLabel}` : ""}
+                    </b>
                     <small>
-                      {formatPeso(line.price)} / {line.unit}
-                      {line.seller ? ` · ${line.seller}` : ""}
+                      {formatPeso(lineCost(line) / line.quantity)} / {line.unit} · {line.seller}
                     </small>
                     <div className="hm-cart-controls">
-                      <div className="hm-stepper">
-                        <button
-                          type="button"
-                          aria-label={`Fewer ${line.name}`}
-                          onClick={() => setQuantity(line.id, line.quantity - 1)}
-                        >
-                          <MinusIcon />
-                        </button>
-                        <span>{line.quantity}</span>
-                        <button
-                          type="button"
-                          aria-label={`More ${line.name}`}
-                          onClick={() => setQuantity(line.id, line.quantity + 1)}
-                        >
-                          <PlusIcon />
-                        </button>
-                      </div>
+                      <QuantityInput
+                        value={line.quantity}
+                        rules={line}
+                        name={line.name}
+                        onChange={(quantity, note) => {
+                          setQuantity(line.id, quantity);
+                          setNotes((all) => ({ ...all, [line.id]: note }));
+                        }}
+                      />
                       <button type="button" className="hm-cart-remove" onClick={() => remove(line.id)}>
                         Remove
                       </button>
-                      <strong>{formatPeso(line.price * line.quantity)}</strong>
+                      <strong>{formatPeso(lineCost(line))}</strong>
                     </div>
+                    {notes[line.id] && <p className="hm-qty-note">{notes[line.id]}</p>}
                   </div>
                 </li>
               ))}
             </ul>
 
             <div className="hm-cart-foot">
+              <TruckRoad lines={lines} total={total} />
               <p className="hm-cart-delivery">
-                {toFree > 0 ? `Add ${formatPeso(toFree)} more for free delivery` : "Free delivery unlocked"}
+                <b>{toFree > 0 ? `${formatPeso(toFree)} more for free delivery` : "Free delivery unlocked"}</b>
+                <span>
+                  {formatWeight(weight)} on a{/^[aeiou6]/i.test(loadFor(weight).truck.name) ? "n" : ""} {loadFor(weight).truck.name}
+                </span>
               </p>
-              <div className="hm-cart-meter">
-                <i style={{ transform: `scaleX(${Math.min(1, total / FREE_DELIVERY_OVER)})` }} />
-              </div>
               <div className="hm-cart-total">
                 <span>
                   Subtotal
-                  {sellers > 1 && <small> · {sellers} sellers, one delivery</small>}
+                  {sellers > 1 && <small> · {plural(sellers, "seller")}, one delivery</small>}
                 </span>
                 <strong>{formatPeso(total)}</strong>
               </div>
-              <Link href="/checkout" className="hm-btn hm-btn--accent hm-btn--block" onClick={close}>
-                Check out <ArrowIcon />
-              </Link>
+              <div className="hm-cart-actions">
+                <Link href="/cart" className="hm-btn hm-btn--ghost" onClick={close}>
+                  View cart
+                </Link>
+                <Link href="/checkout" className="hm-btn hm-btn--accent" onClick={close}>
+                  Check out <ArrowIcon />
+                </Link>
+              </div>
             </div>
           </>
         )}
