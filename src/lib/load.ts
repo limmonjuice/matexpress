@@ -22,8 +22,7 @@ export function loadFor(weightKg: number): Load {
   const biggest = TRUCKS[TRUCKS.length - 1];
   const truck = TRUCKS.find((t) => weightKg <= t.capacityKg) ?? biggest;
   const trips = Math.max(1, Math.ceil(weightKg / biggest.capacityKg));
-  const lastTrip = weightKg - (trips - 1) * biggest.capacityKg;
-  const fill = trips > 1 ? lastTrip / biggest.capacityKg : weightKg / truck.capacityKg;
+  const fill = trips > 1 ? 1 : weightKg / truck.capacityKg;
   return {
     truck,
     trips,

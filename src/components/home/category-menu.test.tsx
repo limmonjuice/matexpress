@@ -56,6 +56,11 @@ describe("CategoryMenu", () => {
     expect(isOpen()).toBe(false);
   });
 
+  test("a type in the menu opens its category, narrowed to that type", () => {
+    render(<CategoryMenu />);
+    expect(screen.getAllByRole("link", { name: "Deformed rebar", hidden: true })[0]).toHaveAttribute("href", "/categories/steel-rebar?sub=Deformed+rebar");
+  });
+
   test("every group heading is a real link", () => {
     render(<CategoryMenu />);
     categories.forEach((c) => {

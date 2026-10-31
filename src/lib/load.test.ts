@@ -16,6 +16,11 @@ describe("loadFor", () => {
     expect(loadFor(40000).trips).toBe(3);
   });
 
+  test("a truck making several trips leaves full, however little the last trip carries", () => {
+    expect(loadFor(15001).fill).toBe(1);
+    expect(loadFor(30100).fill).toBe(1);
+  });
+
   test("only the big trucks need the site's access checked", () => {
     expect(loadFor(2000).needsAccess).toBe(false);
     expect(loadFor(4000).needsAccess).toBe(true);

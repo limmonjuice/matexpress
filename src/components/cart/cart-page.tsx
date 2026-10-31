@@ -37,7 +37,8 @@ export function CartPage({ products }: { products: Product[] }) {
     const check = () => {
       const current = useCartStore.getState().lines;
       const result = reconcileCart(current, products);
-      setNotices(result.notices);
+      // Added to, not replaced: a second check finds nothing new, and what the first one changed must still be said.
+      setNotices((seen) => [...seen, ...result.notices.filter((n) => !seen.some((s) => s.lineId === n.lineId && s.kind === n.kind))]);
       if (result.notices.length) setLines(result.lines);
     };
     if (useCartStore.persist.hasHydrated()) check();
@@ -54,6 +55,7 @@ export function CartPage({ products }: { products: Product[] }) {
   const arrival = now ? orderArrival(lines, now, area) : undefined;
   const blocked = lines.some((l) => l.stock <= 0);
   const toFree = FREE_DELIVERY_OVER - total;
+  const shownNotices = notices.filter((n) => lines.some((l) => l.id === n.lineId));
 
   return (
     <div className="hm-cartpage">
@@ -90,9 +92,9 @@ export function CartPage({ products }: { products: Product[] }) {
 
       <section className="hm-frame hm-cart-grid">
         <div className="hm-cart-main">
-          {notices.length > 0 && (
+          {shownNotices.length > 0 && (
             <ul className="hm-notices" aria-label="Changes to your cart">
-              {notices.map((notice) => (
+              {shownNotices.map((notice) => (
                 <li key={`${notice.lineId}:${notice.kind}`}>
                   <AlertIcon />
                   <NoticeText notice={notice} />

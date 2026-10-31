@@ -26,12 +26,6 @@ export function SiteHeader({ searchIndex }: { searchIndex: SearchEntry[] }) {
   const savedCount = usePreferences((s) => s.saved.length);
   const count = cartCount(lines);
 
-  // The saved cart and preferences load after mount, so the server's markup always matches.
-  useEffect(() => {
-    useCartStore.persist.rehydrate();
-    usePreferences.persist.rehydrate();
-  }, []);
-
   useEffect(() => {
     if (!lastAddedAt || !badge.current) return;
     gsap.fromTo(badge.current, { scale: 1.7 }, { scale: 1, duration: 0.6, ease: "elastic.out(1, 0.45)" });

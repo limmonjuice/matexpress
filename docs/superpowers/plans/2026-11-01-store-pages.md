@@ -10,6 +10,32 @@
 
 **Spec:** the "Design brief" section below. There is no separate spec document.
 
+## Status
+
+Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where the build differs from the tasks below, this section is the record.
+
+**Waiting on the client:**
+- **Task 10, catalog into Neon: not done.** It needs the OK in Decision 1, which hasn't been given. Products, sellers, prices and stock stay typed sample data behind `src/lib/catalog/index.ts`. The order tables from that task were built without it.
+- **Task 14, PayMongo: not done.** It needs a PayMongo account and test keys, which only the client can create. Checkout stays simulated behind `PaymentProvider`, in `src/lib/orders/simulated-payments.ts`, and says so on the page.
+
+**Built differently:**
+- **Placing an order doesn't lower stock.** Stock lives in the sample data, so there's nothing to decrement until Task 10. The check that two buyers can't both win the last unit moves to Task 10 with it. The server still refuses a quantity above the listed stock.
+- **Orders insert through `db.batch`, not `withTransaction`.** `neon-http` throws on `db.transaction`, and a batch is atomic. `src/db/tx.ts` wasn't needed.
+- **Order rules live in `src/lib/orders/`** as `rules.ts`, `price-order.ts`, `create-order.ts`, `tracking.ts`, `proof.ts`, `repo.ts`, `session.ts` and `actions.ts`, rather than the file names in Tasks 11 to 13. `canViewOrder` became `canSeeOrder` in `proof.ts`.
+- **Checkout, order and account components are fewer files** than listed: `checkout-form.tsx`, `order-view.tsx`, `order-bits.tsx`, `account-forms.tsx`.
+- **The old `products` table is untouched.** Task 10 was going to replace it.
+
+**Added beyond the plan:**
+- **Shop by job,** at `/jobs/[slug]`: the materials for a job, with a drawing of it.
+- **Scale drawings** on the product page, generated from each size's real measurements.
+- **Splitting an order** when no one seller holds the quantity: one button adds it from two sellers.
+- **Sharing a saved list** by link.
+- **A live store sign** on the seller application. The awning colour picked is stored with the application.
+- **Signing out forgets the browser's orders and checkout draft,** for shared site-office computers.
+- **Saved sites fill checkout by themselves,** unless something has been typed already.
+
+**Checks:** `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm run check:links`, browser flows in a real browser, and the design inspector on each page type. Not checked: Safari, real iOS and Android touch, real payment.
+
 ## Design brief
 
 ### Every dead link, and what it becomes
@@ -215,11 +241,11 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 
 **Interfaces:** Produces the `(store)` route group. `/how-it-works` stays outside it.
 
-- [ ] **Step 1: Commit the finished home page first,** as a checkpoint. Review `git status`, confirm `.env.local` is ignored, then stage everything and commit `feat: storefront home page and how-it-works move`.
-- [ ] **Step 2: Test.** `"renders the header, footer and page once"`: render the layout with a child and assert one `banner`, one `contentinfo`, one child.
-- [ ] **Step 3: Implement.** The root `not-found.tsx` wraps itself in `StoreShell`, offers search and category links, and returns the correct 404.
-- [ ] **Step 4: Check in the browser.** Tag the header element, follow a client link, and confirm the tag survives. Round-trip to `/how-it-works` still works.
-- [ ] **Step 5: Commit** `refactor: share one store layout`.
+- [x] **Step 1: Commit the finished home page first,** as a checkpoint. Review `git status`, confirm `.env.local` is ignored, then stage everything and commit `feat: storefront home page and how-it-works move`.
+- [x] **Step 2: Test.** `"renders the header, footer and page once"`: render the layout with a child and assert one `banner`, one `contentinfo`, one child.
+- [x] **Step 3: Implement.** The root `not-found.tsx` wraps itself in `StoreShell`, offers search and category links, and returns the correct 404.
+- [x] **Step 4: Check in the browser.** Tag the header element, follow a client link, and confirm the tag survives. Round-trip to `/how-it-works` still works.
+- [x] **Step 5: Commit** `refactor: share one store layout`.
 
 ### Task 2: Catalog model and sample data
 
@@ -253,7 +279,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - Counts: Cement 5, Steel 6, Sand 3, Lumber 5, Roofing 4, Plumbing 5, Electrical 5, Tools 5, Masonry 3, Paint 3, Tiles 2, Hardware 2, 48 in all. Six fictional sellers, as on the home page. Subcategory lists shrink to those with products.
 - All 12 categories get a tile image, so `featuredCategories` moves to a `featured` flag and the home page keeps its 8 tiles.
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"every offer points at a real seller"`
   - `"every image path exists in public/"`
   - `"every category has at least 2 products and every subcategory at least 1"`
@@ -264,9 +290,9 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
   - `"a product out of stock everywhere is inStock false and keeps a price"`
   - `"version 1 carts migrate to empty"`
   - `"the home page still features 8 categories"`
-- [ ] **Step 2: Implement the data and API.** Home sections keep working through `toCard`. `search.ts` reads `data/products` until Task 6. Update home tests for the new shape.
-- [ ] **Step 3: Generate images.** Check the credit balance first. Nano Banana 2.1 in the existing look, flattened to `--hm-tile`. Show three samples before running the batch. Stop at 220 credits.
-- [ ] **Step 4: Commit** `feat: full sample catalog with sellers, sizes and offers`.
+- [x] **Step 2: Implement the data and API.** Home sections keep working through `toCard`. `search.ts` reads `data/products` until Task 6. Update home tests for the new shape.
+- [x] **Step 3: Generate images.** Check the credit balance first. Nano Banana 2.1 in the existing look, flattened to `--hm-tile`. Show three samples before running the batch. Stop at 220 credits.
+- [x] **Step 4: Commit** `feat: full sample catalog with sellers, sizes and offers`.
 
 ### Task 3: Delivery and pricing rules
 
@@ -283,7 +309,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - `unitPriceLabel(price, measure): string | undefined`
 - `lineTotal(price, quantity): number`
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `arrivalDate(new Date("2026-11-02T13:59:00+08:00"), 0, "Rizal")` formats as `"Mon, Nov 2"`; at `14:00:00+08:00` it gives `"Tue, Nov 3"`.
   - Cavite, Laguna and Bulacan add one day; Metro Manila and Rizal add none.
   - The same instant gives the same day under `TZ=UTC`.
@@ -294,8 +320,8 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
   - `clampQuantity` with step 0.5: `1.2` gives 1, `1.3` gives 1.5.
   - `unitPriceLabel(3250, {per:"m",amount:150})` is `"₱21.67/m"`.
   - `lineTotal(16.5, 3)` is 49.5; `lineTotal(0.1, 3)` is 0.3.
-- [ ] **Step 2: Implement** with `Intl` and `timeZone: "Asia/Manila"`.
-- [ ] **Step 3: Commit** `feat: delivery date, fee and quantity rules`.
+- [x] **Step 2: Implement** with `Intl` and `timeZone: "Asia/Manila"`.
+- [x] **Step 3: Commit** `feat: delivery date, fee and quantity rules`.
 
 ### Task 4: Listing engine
 
@@ -311,7 +337,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - `listingHref(pathname, params, change): string`
 - Filter order: category-specific, Price, Delivery, Seller, Brand, Rating, In stock. Price buckets: under ₱250, ₱250–500, ₱500–1,000, ₱1,000–5,000, over ₱5,000. Delivery: same or next day (`leadDays` up to 1), within 3 days. Rating: 4 and up, 4.5 and up. Batch size: 12.
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"values in one filter are OR, filters together are AND"`
   - `"a facet's counts ignore its own filter but respect the others"`
   - `"filtering on a size returns that size on the card"`
@@ -322,8 +348,8 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
   - `"unknown params and values are ignored"`
   - `"listingHref toggles a value and resets show"`
   - `"zero results still returns the applied filters so they can be removed"`
-- [ ] **Step 2: Implement** as pure functions.
-- [ ] **Step 3: Commit** `feat: product listing engine`.
+- [x] **Step 2: Implement** as pure functions.
+- [x] **Step 3: Commit** `feat: product listing engine`.
 
 ### Task 5: Cards, categories and all-products listing
 
@@ -338,7 +364,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - `<Listing scope rawParams defaultSort />` is an async server component, always rendered inside `<Suspense fallback={<ListingSkeleton />}>`
 - The `ProductCard` component now takes a `CardData` prop. `DeliveryLine({ leadDays })` is a client component showing a date after mount with its height reserved.
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"card shows spec, unit price and links with the chosen size"`
   - `"ticking a filter replaces the URL without scrolling"` asserts `router.replace` with `?diameter=16+mm` and `{ scroll: false }`
   - `"an option with count 0 is disabled unless selected"`
@@ -346,9 +372,9 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
   - `"Show more adds 12 to show in the URL"`
   - `"empty results offer to remove each applied filter"`
   - `"the mega menu links a subcategory to ?sub="`
-- [ ] **Step 2: Implement.** Static shell: breadcrumb, title, picture pills. Results read `searchParams` behind Suspense. Changes run in `startTransition` with the old list dimmed. `generateStaticParams` returns all category slugs; an unknown slug calls `notFound()`. Phones get rows and a Filter button that sticks under the header, opening a drawer built like `CartDrawer`. Change the home "View all" links to `/products?sort=new` and `/products?sort=best`.
-- [ ] **Step 3: Check in the browser.** Filter a list, press Show more, scroll, open a product, press Back: filters, depth and scroll position are all intact. Repeat on a phone viewport. No sideways scroll at 1440, 768, 390 and 360 px.
-- [ ] **Step 4: Commit** `feat: category and product listings with filters`.
+- [x] **Step 2: Implement.** Static shell: breadcrumb, title, picture pills. Results read `searchParams` behind Suspense. Changes run in `startTransition` with the old list dimmed. `generateStaticParams` returns all category slugs; an unknown slug calls `notFound()`. Phones get rows and a Filter button that sticks under the header, opening a drawer built like `CartDrawer`. Change the home "View all" links to `/products?sort=new` and `/products?sort=best`.
+- [x] **Step 3: Check in the browser.** Filter a list, press Show more, scroll, open a product, press Back: filters, depth and scroll position are all intact. Repeat on a phone viewport. No sideways scroll at 1440, 768, 390 and 360 px.
+- [x] **Step 4: Commit** `feat: category and product listings with filters`.
 
 ### Task 6: Search and deals
 
@@ -363,7 +389,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - `alternativeQueries(index, query): { query: string, items: SearchEntry[] }[]`
 - `StoreShell` passes `await getSearchIndex()` down to `SearchBox`, so client bundles carry only the slim index.
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `semento` finds Portland Cement, `chb` Hollow Block, `yero` GI Roofing, `bakal` Rebar, `buhangin` Washed Sand, `graba` Crushed Gravel, `kahoy` Lumber, `pintura` Paint.
   - `portlnd cement` and `rebbar` match with `fuzzy` true.
   - `gi` is never fuzzy-matched, because words under 4 letters must match exactly.
@@ -372,8 +398,8 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
   - A blank query returns nothing.
   - `alternativeQueries` on `blue rebar` offers `rebar` with products.
   - The no-results page shows related categories, alternatives, popular products and a help link.
-- [ ] **Step 2: Implement.** Search results reuse `Listing` with a `slugs` scope and `relevance` sort. Fuzzy results carry the notice "No exact matches. Showing close results." `/deals` lists discounted products under the existing dated deal and countdown. `/search` is `noindex`.
-- [ ] **Step 3: Commit** `feat: search results, local words and deals`.
+- [x] **Step 2: Implement.** Search results reuse `Listing` with a `slugs` scope and `relevance` sort. Fuzzy results carry the notice "No exact matches. Showing close results." `/deals` lists discounted products under the existing dated deal and countdown. `/search` is `noindex`.
+- [x] **Step 3: Commit** `feat: search results, local words and deals`.
 
 ### Task 7: Product page
 
@@ -385,7 +411,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - Consumes: Task 3 rules. Produces `QuantityInput({ value, rules, onChange, name })`, reused by the cart.
 - `BuyBox({ product, sellers, initialSize })` is a client component. Size is read from `?size=` behind Suspense so the rest of the page stays in the static shell.
 
-- [ ] **Step 1: Tests** (`buy-box.test.tsx`).
+- [x] **Step 1: Tests** (`buy-box.test.tsx`).
   - `"starts on the cheapest in-stock offer"`
   - `"picking another seller updates price, date and the added line"`
   - `"size buttons switch offers; ?size=16-mm starts there; an unknown size falls back"`
@@ -396,9 +422,9 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
   - `"cost summary shows items, delivery to the area and the gap to free delivery"`
   - `"changing the area updates the fee and date"`
   - Page: `"an unknown slug is not found"`, `"generateStaticParams returns every product"`
-- [ ] **Step 2: Implement.** Native radios for sizes and sellers. The product name is the page `h1`. JSON-LD per `02-guides/json-ld.md`. The sticky phone bar hides `MobileCartBar` while shown. Seller names link to `/sellers/[slug]`. Rating bars appear only when data exists.
-- [ ] **Step 3: Check in the browser** at all four widths: keyboard through sizes and sellers; type a bulk quantity on the phone viewport.
-- [ ] **Step 4: Commit** `feat: product page with seller comparison`.
+- [x] **Step 2: Implement.** Native radios for sizes and sellers. The product name is the page `h1`. JSON-LD per `02-guides/json-ld.md`. The sticky phone bar hides `MobileCartBar` while shown. Seller names link to `/sellers/[slug]`. Rating bars appear only when data exists.
+- [x] **Step 3: Check in the browser** at all four widths: keyboard through sizes and sellers; type a bulk quantity on the phone viewport.
+- [x] **Step 4: Commit** `feat: product page with seller comparison`.
 
 ### Task 8: Cart
 
@@ -411,7 +437,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - `cartCount(lines)` counts lines. `cartTotal(lines)` applies tier prices.
 - `reconcileCart(lines, products): { lines, notices: { lineId, kind: "price" | "stock" | "gone", ... }[] }`
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"same product, size and seller merge; another seller is a new line"`
   - `"cartCount counts lines, not units"`
   - `"cartTotal uses tier prices at each line's quantity"`
@@ -419,8 +445,8 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
   - `"a gone offer is flagged, kept visible and blocks checkout until removed"`
   - `"the drawer accepts a typed quantity"`
   - `"the cart groups by seller and names the seller setting the date"`
-- [ ] **Step 2: Implement.** The drawer gains a typed quantity and a "View cart" link. `/cart` matches the wireframe; the page shell is static and lines render after rehydrate. Update existing `home` tests.
-- [ ] **Step 3: Commit** `feat: full cart with seller groups and price checks`.
+- [x] **Step 2: Implement.** The drawer gains a typed quantity and a "View cart" link. `/cart` matches the wireframe; the page shell is static and lines render after rehydrate. Update existing `home` tests.
+- [x] **Step 3: Commit** `feat: full cart with seller groups and price checks`.
 
 ### Task 9: Seller pages and saved items
 
@@ -428,15 +454,15 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 
 **Interfaces:** Consumes `queryProducts` with `{ sellerSlug }`. `SavedGrid({ cards })` filters server-rendered cards by the saved slugs in `usePreferences`.
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"a seller page shows the seller's own prices"`
   - `"unknown seller is not found"`
   - `"saved shows only saved items and works with no account"`
   - `"the empty state links to categories"`
   - `"Add all to cart adds each item's best offer at its minimum"`
-- [ ] **Step 2: Implement.**
-- [ ] **Step 3: Phase 1 check.** `npm run build`. Real-input browser flow: search `semento`, filter, open a product, pick another seller, type a bulk quantity, add, view the cart, go Back through the list. No console errors. Run the design inspector from `design-taste-frontend` on the listing, product and cart pages and fix what it finds.
-- [ ] **Step 4: Commit** `feat: seller pages and saved items`.
+- [x] **Step 2: Implement.**
+- [x] **Step 3: Phase 1 check.** `npm run build`. Real-input browser flow: search `semento`, filter, open a product, pick another seller, type a bulk quantity, add, view the cart, go Back through the list. No console errors. Run the design inspector from `design-taste-frontend` on the listing, product and cart pages and fix what it finds.
+- [x] **Step 4: Commit** `feat: seller pages and saved items`.
 
 ## Phase 2: Checkout, orders and accounts
 
@@ -470,7 +496,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - `newOrderNumber(): string` matches `/^MX-[A-Z2-9]{8}$/`, from `crypto`
 - `PaymentProvider { start(order): Promise<{ redirectUrl?: string, paid: boolean }> }`
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"priceOrder uses catalog prices, not browser prices"`
   - `"a changed price comes back as changes and nothing is charged"`
   - `"quantity above stock or below minimum is refused"`
@@ -481,9 +507,9 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
   - `"a date before the earliest arrival is refused"`
   - `"order numbers are not sequential"`
   - `"an empty cart redirects to /cart"`
-- [ ] **Step 2: Implement.** Order and stock changes run inside `withTransaction`. Place order disables while pending and reuses one key per attempt. The form draft stays in `sessionStorage`, never payment details. The simulated provider shows "Test payment, no money moves". One charge per order, never one per seller. Update the trust strip to match the real payment list.
-- [ ] **Step 3: Check in the browser.** Double-click Place order under throttled network: one order row. Change a catalog price mid-checkout: a notice appears and no order is made.
-- [ ] **Step 4: Commit** `feat: enclosed checkout and order placement`.
+- [x] **Step 2: Implement.** Order and stock changes run inside `withTransaction`. Place order disables while pending and reuses one key per attempt. The form draft stays in `sessionStorage`, never payment details. The simulated provider shows "Test payment, no money moves". One charge per order, never one per seller. Update the trust strip to match the real payment list.
+- [x] **Step 3: Check in the browser.** Double-click Place order under throttled network: one order row. Change a catalog price mid-checkout: a notice appears and no order is made.
+- [x] **Step 4: Commit** `feat: enclosed checkout and order placement`.
 
 ### Task 12: Order page and tracking
 
@@ -496,15 +522,15 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - `canViewOrder(order, session, cookies): boolean`
 - With `ORDER_TIMELINE=demo`, `demoEvents(order, now)` advances progress by time since placing. Unset, only stored events show.
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"the view has arrival, progress, carrier, reference, history and contents"`
   - `"stages include sellers confirming with a count, before dispatch"`
   - `"demo events appear only with ORDER_TIMELINE=demo"`
   - `"wrong mobile and unknown number give the same message"`
   - `"an order page without proof shows the lookup form and no order details"`
   - `"the buyer who placed the order can reopen it after a refresh"`
-- [ ] **Step 2: Implement.** Session and cookie reads sit behind Suspense. The confirmation view shows the number prominently and asks the buyer to keep it, since no email goes out.
-- [ ] **Step 3: Commit** `feat: order tracking and lookup`.
+- [x] **Step 2: Implement.** Session and cookie reads sit behind Suspense. The confirmation view shows the number prominently and asks the buyer to keep it, since no email goes out.
+- [x] **Step 3: Commit** `feat: order tracking and lookup`.
 
 ### Task 13: Accounts
 
@@ -517,15 +543,15 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - `buyAgain(order, products): { lines, unavailable }`
 - `claimOrder(number)` attaches only an order this browser has proof for
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"buy again uses today's prices and lists what is unavailable"`
   - `"claiming needs the order's proof cookie, not just a matching name"`
   - `"wrong password shows a plain message"`
   - `"saved sites prefill checkout"`
   - `"another user's order is not visible"`
-- [ ] **Step 2: Implement.** `/account` shows sign-in or sign-up with no session, order list and saved sites with one. The confirmation page offers "Save this order to a new account". Checkout links to sign-in but never requires it.
-- [ ] **Step 3: Phase 2 check.** `npm run build`. Browser flow with a test account you can delete: guest order, track by number and mobile, create the account from the confirmation page, see the order listed, buy again.
-- [ ] **Step 4: Commit** `feat: accounts, order history and buy again`.
+- [x] **Step 2: Implement.** `/account` shows sign-in or sign-up with no session, order list and saved sites with one. The confirmation page offers "Save this order to a new account". Checkout links to sign-in but never requires it.
+- [x] **Step 3: Phase 2 check.** `npm run build`. Browser flow with a test account you can delete: guest order, track by number and mobile, create the account from the confirmation page, see the order listed, buy again.
+- [x] **Step 4: Commit** `feat: accounts, order history and buy again`.
 
 ### Task 14: PayMongo test mode (only after you add test keys)
 
@@ -554,21 +580,21 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 
 **Interfaces:** `submitSellerApplication(input)` is a Server Action that validates and stores one row.
 
-- [ ] **Step 1: Tests.**
+- [x] **Step 1: Tests.**
   - `"a valid application stores one row and thanks the applicant"`
   - `"a bad mobile is refused with a field message"`
   - `"delivery help shows the same fees and cut-off as the rules"`, importing from `delivery.ts` so the two can't drift
-- [ ] **Step 2: Implement.** Static pages sharing one template. Policies are drafts for your client to approve. Contact details are obvious placeholders, never a real person's number.
-- [ ] **Step 3: Commit** `feat: help and seller pages`.
+- [x] **Step 2: Implement.** Static pages sharing one template. Policies are drafts for your client to approve. Contact details are obvious placeholders, never a real person's number.
+- [x] **Step 3: Commit** `feat: help and seller pages`.
 
 ### Task 16: Remove the placeholder and check every link
 
 **Files:** Delete `src/app/(store)/[...placeholder]/`. Create `scripts/check-links.mjs`. Modify `package.json` (`check:links`), `src/components/story/story.tsx` only if a link broke.
 
-- [ ] **Step 1: Delete the placeholder.** Unknown URLs now reach the real 404.
-- [ ] **Step 2: Write the crawler.** Starting from `/` on a production build, follow every internal link and fail on any non-200 response. Query-string variants of a page are checked once per filter key.
-- [ ] **Step 3: Final check.** `npx tsc --noEmit`, `npm test`, `npm run lint`, `npm run build`, `npm run check:links`, full browser flows at four widths, design inspector on every new page type. Have one fresh reviewer check the whole branch and fix what it confirms.
-- [ ] **Step 4: Commit** `chore: remove placeholder route and add link check`.
+- [x] **Step 1: Delete the placeholder.** Unknown URLs now reach the real 404.
+- [x] **Step 2: Write the crawler.** Starting from `/` on a production build, follow every internal link and fail on any non-200 response. Query-string variants of a page are checked once per filter key.
+- [x] **Step 3: Final check.** `npx tsc --noEmit`, `npm test`, `npm run lint`, `npm run build`, `npm run check:links`, full browser flows at four widths, design inspector on every new page type. Have one fresh reviewer check the whole branch and fix what it confirms.
+- [x] **Step 4: Commit** `chore: remove placeholder route and add link check`.
 
 ## Sample data to replace before launch
 

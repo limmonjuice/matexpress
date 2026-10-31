@@ -26,6 +26,7 @@ export function ListingView({ pathname, params, result, shown, sorts, children }
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeDrawer = useRef<HTMLButtonElement>(null);
   const tools = useRef<HTMLDivElement>(null);
   const [toolsVisible, setToolsVisible] = useState(true);
 
@@ -49,6 +50,8 @@ export function ListingView({ pathname, params, result, shown, sorts, children }
 
   useEffect(() => {
     if (!drawerOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    closeDrawer.current?.focus();
     document.documentElement.classList.add("hm-lock");
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setDrawerOpen(false);
@@ -57,6 +60,7 @@ export function ListingView({ pathname, params, result, shown, sorts, children }
     return () => {
       window.removeEventListener("keydown", onKey);
       document.documentElement.classList.remove("hm-lock");
+      previous?.focus();
     };
   }, [drawerOpen]);
 
@@ -167,7 +171,7 @@ export function ListingView({ pathname, params, result, shown, sorts, children }
         <div className="hm-drawer-panel" role="dialog" aria-modal="true" aria-label="Filters">
           <div className="hm-drawer-head">
             <h2>Filters</h2>
-            <button type="button" className="hm-round" onClick={() => setDrawerOpen(false)} aria-label="Close filters">
+            <button type="button" ref={closeDrawer} className="hm-round" onClick={() => setDrawerOpen(false)} aria-label="Close filters">
               <CloseIcon />
             </button>
           </div>

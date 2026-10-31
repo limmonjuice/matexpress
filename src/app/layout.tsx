@@ -8,6 +8,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.BETTER_AUTH_URL ?? "http://localhost:3000"),
   title: "MatExpress: Construction materials from trusted suppliers, delivered to site",
   description:
     "Compare cement, steel, sand and lumber from verified hardware stores, check out once, and track every delivery to your site.",

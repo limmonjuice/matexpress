@@ -1970,32 +1970,6 @@ button:hover > .hm-arrow {
   display: none;
 }
 
-/* ------------------------------------------------------------ placeholder */
-
-.hm-placeholder {
-  display: grid;
-  justify-items: start;
-  align-content: center;
-  gap: 16px;
-  min-height: 52vh;
-  padding-block: 48px;
-}
-.hm-placeholder h1 {
-  font-size: clamp(2.25rem, 1.4rem + 3vw, 3.5rem);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.035em;
-}
-.hm-placeholder p {
-  max-width: 30rem;
-  color: var(--hm-ink-soft);
-  font-size: 1.0625rem;
-  line-height: 1.55;
-}
-.hm-placeholder .hm-btn {
-  margin-top: 8px;
-}
-
 /* ----------------------------------------------------- catbar links, by width */
 
 @media (max-width: 1379px) {
