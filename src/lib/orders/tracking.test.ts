@@ -1,0 +1,69 @@
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { demoEvents, demoTimelineOn, trackingView } from "./tracking";
+
+const sellers = [
+  { slug: "tibay-steel", name: "Tibay Steel" },
+  { slug: "bato-aggregates", name: "Bato Aggregates" },
+];
+const at = (minutes: number) => new Date(Date.UTC(2026, 10, 2, 1, minutes));
+
+describe("trackingView", () => {
+  test("a new order is waiting on its sellers", () => {
+    const view = trackingView([{ type: "placed", at: at(0) }], sellers);
+    expect(view).toMatchObject({ stage: 1, confirmed: 0, sellerCount: 2, delivered: false });
+  });
+
+  test("counts sellers who have confirmed, once each", () => {
+    const view = trackingView(
+      [
+        { type: "placed", at: at(0) },
+        { type: "seller-confirmed", sellerSlug: "tibay-steel", at: at(1) },
+        { type: "seller-confirmed", sellerSlug: "tibay-steel", at: at(2) },
+      ],
+      sellers,
+    );
+    expect(view.confirmed).toBe(1);
+    expect(view.stage).toBe(1);
+  });
+
+  test("moves through collecting and on the way to delivered", () => {
+    const events = [{ type: "placed" as const, at: at(0) }];
+    expect(trackingView([...events, { type: "collecting", at: at(3) }], sellers).stage).toBe(2);
+    expect(trackingView([...events, { type: "on-the-way", at: at(5) }], sellers).stage).toBe(3);
+    const done = trackingView([...events, { type: "delivered", at: at(9) }], sellers);
+    expect(done.stage).toBe(4);
+    expect(done.delivered).toBe(true);
+  });
+
+  test("history reads newest first, with seller names", () => {
+    const { history } = trackingView(
+      [
+        { type: "placed", at: at(0) },
+        { type: "seller-confirmed", sellerSlug: "bato-aggregates", at: at(1) },
+      ],
+      sellers,
+    );
+    expect(history[0].text).toBe("Bato Aggregates confirmed your items");
+    expect(history[1].text).toMatch(/placed/);
+  });
+});
+
+describe("demoEvents", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  test("nothing has happened yet at the start", () => {
+    expect(demoEvents(at(0), sellers, at(0))).toEqual([]);
+  });
+
+  test("plays out by the clock, in order", () => {
+    expect(demoEvents(at(0), sellers, at(2)).map((e) => e.sellerSlug)).toEqual(["tibay-steel", "bato-aggregates"]);
+    expect(demoEvents(at(0), sellers, at(30)).at(-1)?.type).toBe("delivered");
+  });
+
+  test("runs only when switched on", () => {
+    vi.stubEnv("ORDER_TIMELINE", "");
+    expect(demoTimelineOn()).toBe(false);
+    vi.stubEnv("ORDER_TIMELINE", "demo");
+    expect(demoTimelineOn()).toBe(true);
+  });
+});

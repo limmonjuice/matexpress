@@ -1,0 +1,607 @@
+/* The enclosed checkout. Tokens come from .hm in home.css. */
+
+.hm-co-head {
+  background: #fff;
+}
+.hm-co-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+}
+.hm-co-secure {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--hm-ink-soft);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.hm-co-secure .hm-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--hm-accent-text);
+}
+.hm-co-foot {
+  padding-block: 24px 28px;
+  color: var(--hm-muted);
+  font-size: 0.875rem;
+}
+.hm-co-foot a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hm-co-wait {
+  min-height: 70vh;
+}
+.hm-co {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 392px;
+  align-items: start;
+  gap: clamp(20px, 3.4vw, 48px);
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding: 22px var(--hm-pad) 8px;
+}
+.hm-co-main h1 {
+  font-size: clamp(2.25rem, 1.5rem + 2.4vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+.hm-co-step {
+  margin-top: 16px;
+  padding: clamp(18px, 2.4vw, 28px);
+  border-radius: 24px;
+  background: #fff;
+}
+.hm-co-step h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.hm-co-hint {
+  margin-top: 4px;
+  color: var(--hm-ink-soft);
+  font-size: 0.9375rem;
+}
+.hm-co-hint a {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hm-co-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.hm-co-field[data-wide="true"] {
+  grid-column: 1 / -1;
+}
+.hm-co-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.hm-co-field input,
+.hm-co-field select,
+.hm-co-notes textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--hm-tile);
+  font-size: 1rem;
+  outline: none;
+  transition: box-shadow 0.15s, background-color 0.15s;
+}
+.hm-co-notes textarea {
+  padding: 12px 14px;
+  resize: vertical;
+}
+.hm-co-field input:focus,
+.hm-co-field select:focus,
+.hm-co-notes textarea:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--hm-ink); /* taste-skill-ignore: a control's own outline */
+}
+.hm-co-field input::placeholder,
+.hm-co-notes textarea::placeholder {
+  color: var(--hm-muted);
+}
+.hm-co-field[data-invalid="true"] input,
+.hm-co-field[data-invalid="true"] select {
+  background: #fdecdc;
+  box-shadow: inset 0 0 0 2px var(--hm-accent-text); /* taste-skill-ignore: a control's own outline */
+}
+.hm-co-error {
+  margin-top: 5px;
+  color: var(--hm-accent-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.hm-co-notes {
+  margin-top: 12px;
+}
+.hm-co-notes summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  list-style: none;
+}
+.hm-co-notes summary::-webkit-details-marker {
+  display: none;
+}
+.hm-co-sites {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.hm-co-sites button {
+  display: grid;
+  gap: 1px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--hm-stone);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.hm-co-sites button:hover {
+  background: #e2d9cd;
+}
+.hm-co-sites button[aria-pressed="true"] {
+  background: var(--hm-ink);
+  color: #fff;
+}
+.hm-co-sites button[aria-pressed="true"] small {
+  color: #d6dbe3;
+}
+.hm-co-sites b {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.hm-co-sites small {
+  color: var(--hm-ink-soft);
+  font-size: 0.8125rem;
+}
+.hm-co-access {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fdecdc;
+}
+.hm-co-access legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.hm-co-access label {
+  clear: both;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.hm-co-access input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--hm-ink);
+}
+.hm-co-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin-top: 8px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.hm-co-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--hm-ink);
+}
+
+/* Days as a strip of calendar pages. */
+.hm-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(62px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.hm-days::-webkit-scrollbar {
+  display: none;
+}
+.hm-days label {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 92px;
+  padding: 10px 4px;
+  border-radius: 16px;
+  background: var(--hm-tile);
+  line-height: 1.15;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.hm-days label:hover {
+  background: var(--hm-stone);
+}
+.hm-days small {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.hm-days b {
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.hm-days em {
+  margin-top: 2px;
+  color: var(--hm-accent-text);
+  font-size: 0.8125rem;
+  font-style: normal;
+  font-weight: 700;
+}
+.hm-days label[data-selected="true"] {
+  background: var(--hm-ink);
+  color: #fff;
+}
+.hm-days label[data-selected="true"] em {
+  color: var(--hm-accent);
+}
+.hm-days input,
+.hm-windows input,
+.hm-pay input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.hm-days label:has(input:focus-visible),
+.hm-windows label:has(input:focus-visible),
+.hm-pay label:has(input:focus-visible) {
+  outline: 3px solid var(--hm-ink);
+  outline-offset: 2px;
+}
+.hm-windows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.hm-windows label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  border-radius: 16px;
+  background: var(--hm-tile);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.hm-windows label:hover {
+  background: var(--hm-stone);
+}
+.hm-windows label[data-selected="true"] {
+  background: var(--hm-ink);
+  color: #fff;
+}
+.hm-pay {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.hm-pay label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: var(--hm-tile);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.2s, background-color 0.2s;
+}
+.hm-pay label[data-selected="true"] {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--hm-ink); /* taste-skill-ignore: a control's own outline */
+}
+.hm-pay-dot {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px rgb(18 25 37 / 0.22); /* taste-skill-ignore: a control's own outline */
+}
+.hm-pay label[data-selected="true"] .hm-pay-dot {
+  background: var(--hm-ink);
+  box-shadow: none; /* taste-skill-ignore: a control's own outline */
+  color: #fff;
+}
+.hm-pay-dot .hm-icon {
+  width: 14px;
+  height: 14px;
+}
+.hm-co-test {
+  margin-top: 10px;
+  color: var(--hm-ink-soft);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.hm-co-place {
+  margin-top: 16px;
+}
+.hm-co-submit {
+  width: 100%;
+  height: 62px;
+  font-size: 1.125rem;
+}
+.hm-co-place p {
+  margin-top: 8px;
+  color: var(--hm-ink-soft);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.hm-co-place p a {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hm-co-alert {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fdecdc;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+.hm-co-alert .hm-icon {
+  flex-shrink: 0;
+  color: var(--hm-accent-text);
+}
+.hm-co-alert b {
+  font-weight: 700;
+}
+.hm-co-alert ul {
+  margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------- summary */
+
+.hm-co-side {
+  position: sticky;
+  top: 16px;
+  padding: 22px;
+  border-radius: 24px;
+  background: #fff;
+}
+.hm-co-side h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.hm-co-route {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.hm-co-route li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hm-co-route .hm-mark {
+  width: 28px;
+  height: 28px;
+  font-size: 0.8125rem;
+}
+.hm-co-load {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--hm-stone);
+}
+.hm-co-load .hm-truck {
+  flex-shrink: 0;
+  width: 112px;
+}
+.hm-co-load p {
+  display: grid;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+}
+.hm-co-load b {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.hm-co-load span {
+  color: var(--hm-ink-soft);
+}
+.hm-co-lines {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.hm-co-lines li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+.hm-co-thumb {
+  position: relative;
+  display: block;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: var(--hm-tile);
+}
+.hm-co-thumb img {
+  border-radius: 12px;
+}
+.hm-co-thumb i {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--hm-ink);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.hm-co-line-name {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+.hm-co-line-name b {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.hm-co-line-name small {
+  color: var(--hm-muted);
+  font-size: 0.8125rem;
+}
+.hm-co-lines strong {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.hm-co-totals {
+  margin-top: 14px;
+}
+.hm-co-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+.hm-co-totals dd {
+  font-weight: 600;
+}
+.hm-co-totals .hm-co-total {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1.5px solid var(--hm-line);
+}
+.hm-co-total dt,
+.hm-co-total dd {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.hm-co-phone-summary {
+  display: none;
+}
+
+/* --------------------------------------------------------------- by width */
+
+@media (max-width: 959px) {
+  .hm-co {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hm-co-side {
+    display: none;
+  }
+  .hm-co-phone-summary {
+    display: block;
+    margin-top: 14px;
+    padding: 0 16px;
+    border-radius: 18px;
+    background: #fff;
+  }
+  .hm-co-phone-summary summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 54px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+  .hm-co-phone-summary summary::-webkit-details-marker {
+    display: none;
+  }
+  .hm-co-phone-summary summary b {
+    margin-left: auto;
+    font-weight: 700;
+  }
+  .hm-co-phone-summary summary .hm-icon {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.25s var(--hm-ease);
+  }
+  .hm-co-phone-summary[open] summary .hm-icon {
+    transform: rotate(180deg);
+  }
+  .hm-co-phone-summary .hm-co-load {
+    margin-top: 0;
+  }
+  .hm-co-phone-summary .hm-co-totals {
+    padding-bottom: 12px;
+  }
+}
+
+@media (max-width: 699px) {
+  .hm-co-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hm-days {
+    display: flex;
+    margin-inline: -18px;
+    padding-inline: 18px;
+  }
+  .hm-days label {
+    flex: 0 0 68px;
+  }
+  .hm-pay {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

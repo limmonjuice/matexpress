@@ -6,6 +6,7 @@ import {
   serial,
   text,
   timestamp,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 // ---------------------------------------------------------------------------
@@ -94,3 +95,85 @@ export const products = pgTable("products", {
 
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Orders. Everything an order needs is copied in when it's placed, so later
+// changes to prices or the catalog never rewrite what someone bought.
+// ---------------------------------------------------------------------------
+
+export const orders = pgTable("orders", {
+  id: uuid("id").primaryKey(),
+  number: text("number").notNull().unique(),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  contactName: text("contact_name").notNull(),
+  mobile: text("mobile").notNull(),
+  street: text("street").notNull(),
+  city: text("city").notNull(),
+  area: text("area").notNull(),
+  notes: text("notes"),
+  truckAccess: text("truck_access"),
+  deliveryDate: text("delivery_date").notNull(),
+  deliveryWindow: text("delivery_window").notNull(),
+  subtotalCentavos: integer("subtotal_centavos").notNull(),
+  deliveryFeeCentavos: integer("delivery_fee_centavos").notNull(),
+  totalCentavos: integer("total_centavos").notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  paymentStatus: text("payment_status").notNull(),
+  paymentRef: text("payment_ref"),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const orderItems = pgTable("order_items", {
+  id: uuid("id").primaryKey(),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  productSlug: text("product_slug").notNull(),
+  variantId: text("variant_id").notNull(),
+  variantLabel: text("variant_label"),
+  sellerSlug: text("seller_slug").notNull(),
+  sellerName: text("seller_name").notNull(),
+  name: text("name").notNull(),
+  unit: text("unit").notNull(),
+  image: text("image").notNull(),
+  unitPriceCentavos: integer("unit_price_centavos").notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
+  lineTotalCentavos: integer("line_total_centavos").notNull(),
+});
+
+export const orderEvents = pgTable("order_events", {
+  id: uuid("id").primaryKey(),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  sellerSlug: text("seller_slug"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/** Delivery sites a signed-in buyer has saved, to fill checkout in one tap. */
+export const sites = pgTable("sites", {
+  id: uuid("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  contactName: text("contact_name").notNull(),
+  mobile: text("mobile").notNull(),
+  street: text("street").notNull(),
+  city: text("city").notNull(),
+  area: text("area").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const sellerApplications = pgTable("seller_applications", {
+  id: uuid("id").primaryKey(),
+  storeName: text("store_name").notNull(),
+  contactName: text("contact_name").notNull(),
+  mobile: text("mobile").notNull(),
+  city: text("city").notNull(),
+  sells: text("sells").notNull(),
+  awning: text("awning"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

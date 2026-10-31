@@ -1,0 +1,1 @@
+ALTER TABLE "seller_applications" ADD COLUMN "awning" text;
