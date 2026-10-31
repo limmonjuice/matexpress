@@ -5,15 +5,8 @@ import { useRouter } from "next/navigation";
 import { TrashIcon } from "@/components/home/icons";
 import { authClient } from "@/lib/auth-client";
 import { deliveryAreas } from "@/lib/delivery";
-import { claimBrowserOrders, forgetBrowserOrders, removeSite, saveSite } from "@/lib/orders/actions";
-import { CHECKOUT_DRAFT_KEY, FIELD_LIMITS, type FieldErrors, type SiteFields } from "@/lib/orders/rules";
-
-const friendly = (message?: string) => {
-  if (!message) return "Something went wrong. Please try again.";
-  if (/invalid email or password/i.test(message)) return "That email and password don't match.";
-  if (/already exists/i.test(message)) return "There's already an account with that email. Try signing in.";
-  return message;
-};
+import { claimOrder, forgetBrowserOrders, removeSite, saveSite } from "@/lib/orders/actions";
+import { CHECKOUT_ATTEMPT_KEY, CHECKOUT_DRAFT_KEY, CONNECTION_ERROR, FIELD_LIMITS, friendlyAuthError, localPath, type FieldErrors, type SiteFields } from "@/lib/orders/rules";
 
 export function AuthForms({ next }: { next?: string }) {
   const router = useRouter();
@@ -31,14 +24,18 @@ export function AuthForms({ next }: { next?: string }) {
         e.preventDefault();
         setError(undefined);
         startTransition(async () => {
-          const { error: failed } = mode === "in" ? await authClient.signIn.email({ email, password }) : await authClient.signUp.email({ name, email, password });
-          if (failed) {
-            setError(friendly(failed.message));
-            return;
+          try {
+            const { error: failed } = mode === "in" ? await authClient.signIn.email({ email, password }) : await authClient.signUp.email({ name, email, password });
+            if (failed) {
+              setError(friendlyAuthError(failed.message));
+              return;
+            }
+            const target = localPath(next);
+            if (target) router.replace(target);
+            else router.refresh();
+          } catch {
+            setError(CONNECTION_ERROR);
           }
-          await claimBrowserOrders();
-          if (next?.startsWith("/")) router.replace(next);
-          else router.refresh();
         });
       }}
     >
@@ -88,26 +85,76 @@ export function AuthForms({ next }: { next?: string }) {
 }
 
 export function SignOutButton() {
+  const [pending, startTransition] = useTransition();
+  const [failed, setFailed] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className="hm-btn hm-btn--ghost hm-btn--small"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            setFailed(false);
+            try {
+              const { error } = await authClient.signOut();
+              if (error) throw error;
+              await forgetBrowserOrders();
+              try {
+                sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
+                sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY);
+              } catch {}
+              // A full page load, not a refresh: pages kept alive in the background still hold this buyer's site and orders.
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- the router would keep them alive.
+              window.location.assign("/account");
+            } catch {
+              setFailed(true);
+            }
+          })
+        }
+      >
+        Sign out
+      </button>
+      {failed && (
+        <p className="hm-qty-note" role="alert">
+          {CONNECTION_ERROR}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** Adds an order placed from this browser to the signed-in account, because the buyer said it's theirs. */
+export function ClaimOrderButton({ number }: { number: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [failed, setFailed] = useState(false);
   return (
-    <button
-      type="button"
-      className="hm-btn hm-btn--ghost hm-btn--small"
-      disabled={pending}
-      onClick={() =>
-        startTransition(async () => {
-          await authClient.signOut();
-          await forgetBrowserOrders();
-          try {
-            sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
-          } catch {}
-          router.refresh();
-        })
-      }
-    >
-      Sign out
-    </button>
+    <>
+      <button
+        type="button"
+        className="hm-btn hm-btn--ghost hm-btn--small"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            setFailed(false);
+            try {
+              await claimOrder(number);
+              router.refresh();
+            } catch {
+              setFailed(true);
+            }
+          })
+        }
+      >
+        {pending ? "Adding…" : "Add to my account"}
+      </button>
+      {failed && (
+        <p className="hm-qty-note" role="alert">
+          {CONNECTION_ERROR}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -118,6 +165,7 @@ export function AddSiteForm({ name }: { name: string }) {
   const [open, setOpen] = useState(false);
   const [site, setSite] = useState<SiteFields>({ ...EMPTY_SITE, contactName: name });
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
 
   if (!open) {
@@ -142,15 +190,20 @@ export function AddSiteForm({ name }: { name: string }) {
       onSubmit={(e) => {
         e.preventDefault();
         startTransition(async () => {
-          const result = await saveSite(site);
-          if (result.errors) {
-            setErrors(result.errors);
-            return;
+          setFailed(false);
+          try {
+            const result = await saveSite(site);
+            if (result.errors) {
+              setErrors(result.errors);
+              return;
+            }
+            setSite({ ...EMPTY_SITE, contactName: name });
+            setErrors({});
+            setOpen(false);
+            router.refresh();
+          } catch {
+            setFailed(true);
           }
-          setSite({ ...EMPTY_SITE, contactName: name });
-          setErrors({});
-          setOpen(false);
-          router.refresh();
         });
       }}
     >
@@ -166,6 +219,11 @@ export function AddSiteForm({ name }: { name: string }) {
           ))}
         </select>
       </div>
+      {failed && (
+        <p className="hm-co-error" role="alert">
+          {CONNECTION_ERROR}
+        </p>
+      )}
       <button type="submit" className="hm-btn hm-btn--ink hm-btn--small" disabled={pending}>
         {pending ? "Saving…" : "Save this site"}
       </button>
@@ -176,20 +234,33 @@ export function AddSiteForm({ name }: { name: string }) {
 export function RemoveSiteButton({ id, label }: { id: string; label: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [failed, setFailed] = useState(false);
   return (
-    <button
-      type="button"
-      className="hm-round"
-      aria-label={`Remove ${label}`}
-      disabled={pending}
-      onClick={() =>
-        startTransition(async () => {
-          await removeSite(id);
-          router.refresh();
-        })
-      }
-    >
-      <TrashIcon />
-    </button>
+    <>
+      <button
+        type="button"
+        className="hm-round"
+        aria-label={`Remove ${label}`}
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            setFailed(false);
+            try {
+              await removeSite(id);
+              router.refresh();
+            } catch {
+              setFailed(true);
+            }
+          })
+        }
+      >
+        <TrashIcon />
+      </button>
+      {failed && (
+        <p className="hm-qty-note" role="alert">
+          {CONNECTION_ERROR}
+        </p>
+      )}
+    </>
   );
 }

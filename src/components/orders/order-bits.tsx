@@ -4,7 +4,8 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowIcon, CheckIcon } from "@/components/home/icons";
 import { authClient } from "@/lib/auth-client";
-import { buyAgain, claimBrowserOrders, lookupOrder } from "@/lib/orders/actions";
+import { buyAgain, claimOrder, forgetBrowserOrders, lookupOrder } from "@/lib/orders/actions";
+import { CONNECTION_ERROR, friendlyAuthError } from "@/lib/orders/rules";
 import { useCartStore } from "@/stores/cart-store";
 
 export function CopyNumber({ number }: { number: string }) {
@@ -41,6 +42,7 @@ export function BuyAgainButton({ number, label = "Buy again" }: { number: string
   const openCart = useCartStore((s) => s.open);
   const [pending, startTransition] = useTransition();
   const [missing, setMissing] = useState<string[]>([]);
+  const [failed, setFailed] = useState(false);
 
   return (
     <>
@@ -50,16 +52,60 @@ export function BuyAgainButton({ number, label = "Buy again" }: { number: string
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const { lines, unavailable } = await buyAgain(number);
-            lines.forEach(({ quantity, ...line }) => add(line, quantity));
-            setMissing(unavailable);
-            if (lines.length) openCart();
+            setFailed(false);
+            try {
+              const { lines, unavailable } = await buyAgain(number);
+              lines.forEach(({ quantity, ...line }) => add(line, quantity));
+              setMissing(unavailable);
+              if (lines.length) openCart();
+            } catch {
+              setFailed(true);
+            }
           })
         }
       >
         {pending ? "Adding…" : label}
       </button>
       {missing.length > 0 && <p className="hm-qty-note">No longer available: {missing.join(", ")}.</p>}
+      {failed && (
+        <p className="hm-qty-note" role="alert">
+          {CONNECTION_ERROR}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** For a shared computer: this browser stops opening these orders. Their number and mobile still will. */
+export function ForgetOrdersButton() {
+  const [pending, startTransition] = useTransition();
+  const [failed, setFailed] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className="hm-copy hm-forget"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            setFailed(false);
+            try {
+              await forgetBrowserOrders();
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full page load: pages kept alive in the background still hold these orders.
+              window.location.assign("/track");
+            } catch {
+              setFailed(true);
+            }
+          })
+        }
+      >
+        {pending ? "Forgetting…" : "Forget these on this computer"}
+      </button>
+      {failed && (
+        <p className="hm-qty-note" role="alert">
+          {CONNECTION_ERROR}
+        </p>
+      )}
     </>
   );
 }
@@ -93,7 +139,7 @@ export function TrackForm({ initialNumber = "" }: { initialNumber?: string }) {
 }
 
 /** Offered only after the order is in: an account is a convenience, never the price of buying. */
-export function CreateAccountOffer({ name }: { name: string }) {
+export function CreateAccountOffer({ name, number }: { name: string; number: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -107,13 +153,17 @@ export function CreateAccountOffer({ name }: { name: string }) {
         e.preventDefault();
         setError(undefined);
         startTransition(async () => {
-          const { error: failed } = await authClient.signUp.email({ name, email, password });
-          if (failed) {
-            setError(failed.message ?? "We couldn't create that account.");
-            return;
+          try {
+            const { error: failed } = await authClient.signUp.email({ name, email, password });
+            if (failed) {
+              setError(friendlyAuthError(failed.message));
+              return;
+            }
+            await claimOrder(number);
+            router.refresh();
+          } catch {
+            setError(CONNECTION_ERROR);
           }
-          await claimBrowserOrders();
-          router.refresh();
         });
       }}
     >

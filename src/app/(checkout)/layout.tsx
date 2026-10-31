@@ -16,7 +16,7 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
           </Link>
           <span className="hm-co-secure">
             <PerkIcon name="lock" />
-            Secure checkout
+            Secure <span>checkout</span>
           </span>
           <Link href="/cart" className="hm-link">
             Back to cart

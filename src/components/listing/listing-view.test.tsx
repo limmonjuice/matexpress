@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { Suspense, use, useState } from "react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { products } from "@/lib/catalog/data/products";
 import { parseListingParams, queryProducts, type ListingScope } from "@/lib/catalog/listing";
@@ -29,6 +30,47 @@ describe("ListingView", () => {
     show();
     await userEvent.click(sidebar().getByRole("checkbox", { name: /^16 mm/ }));
     expect(replace).toHaveBeenCalledWith(`${STEEL}?size=16+mm`, { scroll: false });
+  });
+
+  describe("on a slow connection, before the list has come back", () => {
+    /** Holds the list open the way a navigation in progress does. */
+    function SlowList() {
+      const [loading, setLoading] = useState<Promise<void> | null>(null);
+      replace.mockImplementation(() => setLoading(new Promise(() => {})));
+      if (loading) use(loading);
+      const params = parseListingParams({});
+      const { items, ...result } = queryProducts(products, { categorySlug: "steel-rebar" }, params);
+      return (
+        <ListingView pathname={STEEL} params={params} result={result} shown={items.length} sorts={["best", "price-asc"]}>
+          <li>The cards</li>
+        </ListingView>
+      );
+    }
+
+    afterEach(() => replace.mockReset());
+
+    test("a tick shows at once", async () => {
+      render(
+        <Suspense fallback="loading">
+          <SlowList />
+        </Suspense>,
+      );
+      await userEvent.click(sidebar().getByRole("checkbox", { name: /^16 mm/ }));
+      expect(sidebar().getByRole("checkbox", { name: /^16 mm/ })).toBeChecked();
+    });
+
+    test("a second tick builds on the first instead of losing it", async () => {
+      render(
+        <Suspense fallback="loading">
+          <SlowList />
+        </Suspense>,
+      );
+      await userEvent.click(sidebar().getByRole("checkbox", { name: /^16 mm/ }));
+      await userEvent.click(sidebar().getByRole("checkbox", { name: /^12 mm/ }));
+      expect(replace).toHaveBeenLastCalledWith(`${STEEL}?size=16+mm&size=12+mm`, { scroll: false });
+      expect(sidebar().getByRole("checkbox", { name: /^16 mm/ })).toBeChecked();
+      expect(sidebar().getByRole("checkbox", { name: /^12 mm/ })).toBeChecked();
+    });
   });
 
   test("a value with nothing behind it can't be ticked", () => {
@@ -112,6 +154,35 @@ describe("ListingView", () => {
     expect(replace).toHaveBeenCalledWith(`${STEEL}?size=16+mm&size=12+mm`, { scroll: false });
     await userEvent.click(drawer.getByRole("button", { name: "Show 1 product" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  test("the floating Filter shows only while the list is on screen and the top row isn't", () => {
+    const watching = new Map<Element, (visible: boolean) => void>();
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(private report: (entries: { isIntersecting: boolean }[]) => void) {}
+        observe(el: Element) {
+          watching.set(el, (visible) => this.report([{ isIntersecting: visible }]));
+        }
+        disconnect() {}
+      },
+    );
+    show();
+    vi.unstubAllGlobals();
+
+    const float = document.querySelector(".hm-filter-float")!;
+    const [top, list] = [document.querySelector(".hm-tools")!, document.querySelector(".hm-results")!];
+    expect(float).toHaveAttribute("data-show", "false");
+
+    act(() => watching.get(top)!(false));
+    expect(float).toHaveAttribute("data-show", "true");
+    expect(float).toHaveAttribute("tabindex", "0");
+
+    // Past the end of the list, it would only sit on top of the footer.
+    act(() => watching.get(list)!(false));
+    expect(float).toHaveAttribute("data-show", "false");
+    expect(float).toHaveAttribute("tabindex", "-1");
   });
 
   test("a long list of options starts short, and a ticked one stays in view", async () => {

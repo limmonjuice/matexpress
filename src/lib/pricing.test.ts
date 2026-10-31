@@ -118,4 +118,20 @@ describe("splitOrder", () => {
   test("isn't offered when everyone together falls short", () => {
     expect(splitOrder(offers, 5000)).toBeUndefined();
   });
+
+  test("never leaves a part under the minimum", () => {
+    const parts = splitOrder([offer("a", 14, 8000), offer("b", 15, 3000), offer("c", 16, 1500)], 11010, { minQty: 50 })!;
+    expect(parts.map((part) => part.quantity)).toEqual([8000, 2960, 50]);
+  });
+
+  test("works in the seller's steps", () => {
+    const parts = splitOrder([offer("a", 14, 90), offer("b", 15, 40)], 90.5, { minQty: 1, step: 0.5 })!;
+    expect(parts.map((part) => part.quantity)).toEqual([89.5, 1]);
+  });
+
+  test("skips a seller holding less than the minimum, and says no if that's not enough", () => {
+    expect(splitOrder([offer("a", 14, 40), offer("b", 15, 40)], 60, { minQty: 50 })).toBeUndefined();
+    const parts = splitOrder([offer("a", 14, 40), offer("b", 15, 60), offer("c", 16, 60)], 110, { minQty: 50 })!;
+    expect(parts.map((part) => part.offer.sellerSlug)).toEqual(["b", "c"]);
+  });
 });

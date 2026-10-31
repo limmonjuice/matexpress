@@ -119,12 +119,18 @@ function run(index: SearchEntry[], words: string[][], test: (word: string, token
     .map((hit) => hit.entry);
 }
 
+/** What a local word means, if it is one. Its own entries only: every object has a "constructor". */
+const meaningsOf = (word: string) => (Object.hasOwn(LOCAL_WORDS, word) ? LOCAL_WORDS[word] : undefined);
+
 export function searchProducts(index: SearchEntry[], query: string, limit = 6): SearchResult {
   const typed = tokens(query);
   if (typed.length === 0) return EMPTY;
 
-  const local = typed.find((word) => LOCAL_WORDS[word] && word !== stem(LOCAL_WORDS[word][0]));
-  const words = typed.map((word) => LOCAL_WORDS[word]?.map(stem) ?? [word]);
+  const local = typed.find((word) => {
+    const meanings = meaningsOf(word);
+    return meanings && word !== stem(meanings[0]);
+  });
+  const words = typed.map((word) => meaningsOf(word)?.map(stem) ?? [word]);
 
   let hits = run(index, words, strictMatch);
   let fuzzy = false;

@@ -103,6 +103,62 @@ describe("ProductView", () => {
     expect(screen.getByRole("radio", { name: "16 mm" })).toBeChecked();
   });
 
+  describe("opened from a link with ?size=, as every cart and order link is", () => {
+    beforeEach(() => {
+      url.search = "size=16-mm";
+    });
+
+    test("picking a seller stays picked", async () => {
+      show(rebar);
+      await userEvent.click(screen.getByRole("radio", { name: /Dalisay Hardware/ }));
+      expect(screen.getByRole("radio", { name: /Dalisay Hardware/ })).toBeChecked();
+    });
+
+    test("typing still re-ranks, and a note about the quantity stays", async () => {
+      show(rebar);
+      const before = rowOrder()[0];
+      await type(rebar, "500");
+      expect(screen.getByRole("radio", { name: "16 mm" })).toBeChecked();
+      expect(rowOrder()[0]).toBe("bakal-supply");
+      expect(before).toBe("tibay-steel");
+      await type(rebar, "1.5");
+      await userEvent.tab();
+      expect(screen.getByText("Whole units only.")).toBeInTheDocument();
+    });
+
+    test("a seller and a quantity survive the size being set again by the same link", async () => {
+      const { rerender } = show(rebar);
+      await userEvent.click(screen.getByRole("radio", { name: /Dalisay Hardware/ }));
+      rerender(<ProductView product={rebar} specsFor={rebar.variants.map(() => ({ Standard: "PNS 49" }))} />);
+      expect(screen.getByRole("radio", { name: /Dalisay Hardware/ })).toBeChecked();
+    });
+  });
+
+  test("a page kept alive follows its address back to the usual size", () => {
+    url.search = "size=16-mm";
+    const { rerender } = show(rebar);
+    expect(screen.getByRole("radio", { name: "16 mm" })).toBeChecked();
+    url.search = "";
+    rerender(<ProductView product={rebar} specsFor={rebar.variants.map(() => ({ Standard: "PNS 49" }))} />);
+    expect(screen.getByRole("radio", { name: "12 mm" })).toBeChecked();
+  });
+
+  test("adding while the field still holds a bad number adds what the seller can sell", async () => {
+    show(blocks);
+    await type(blocks, "3");
+    await userEvent.click(screen.getAllByRole("button", { name: "Add to cart" })[0]);
+    expect(useCartStore.getState().lines[0].quantity).toBe(50);
+  });
+
+  test("a split never leaves a seller less than the minimum", async () => {
+    show(blocks);
+    await type(blocks, "11010");
+    await userEvent.click(screen.getByRole("button", { name: "Add both to cart" }));
+    const { lines } = useCartStore.getState();
+    expect(lines.reduce((sum, line) => sum + line.quantity, 0)).toBe(11010);
+    lines.forEach((line) => expect(line.quantity).toBeGreaterThanOrEqual(50));
+  });
+
   test("a link with a size that doesn't exist opens on the usual one", () => {
     url.search = "size=99-mm";
     show(rebar);

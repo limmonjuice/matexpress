@@ -3,7 +3,7 @@ import { sellerBySlug } from "@/lib/catalog/data/sellers";
 import { productImage } from "@/lib/catalog/card";
 import type { Product } from "@/lib/catalog/types";
 import { deliveryFee } from "@/lib/delivery";
-import { clampQuantity, priceForQuantity } from "@/lib/pricing";
+import { clampQuantity, lineTotal, priceForQuantity } from "@/lib/pricing";
 import type { CheckoutInput } from "./rules";
 
 export const toCentavos = (pesos: number) => Math.round(pesos * 100);
@@ -45,15 +45,25 @@ export function priceOrder(lines: CheckoutInput["lines"], products: Product[], a
   const bySlug = new Map(products.map((p) => [p.slug, p]));
   const problems: OrderProblem[] = [];
   const priced: PricedLine[] = [];
+  const seen = new Set<string>();
 
   for (const line of lines) {
     const product = bySlug.get(line.slug);
     const variant = product?.variants.find((v) => v.id === line.variantId);
     const offer = variant?.offers.find((o) => o.sellerSlug === line.sellerSlug);
-    if (!product || !variant || !offer || offer.stock <= 0) {
+    // A seller holding less than their own minimum can't fill any order.
+    if (!product || !variant || !offer || offer.stock < (variant.minQty ?? variant.step ?? 1)) {
       problems.push({ kind: "gone", slug: line.slug, name: product?.name });
       continue;
     }
+
+    // One seller's stock can't be spent twice by listing it twice.
+    const id = `${line.slug}:${line.variantId}:${line.sellerSlug}`;
+    if (seen.has(id)) {
+      problems.push({ kind: "quantity", slug: line.slug, name: product.name, quantity: line.quantity, note: "It's in the order twice." });
+      continue;
+    }
+    seen.add(id);
 
     const { quantity, note } = clampQuantity(line.quantity, { minQty: variant.minQty, step: variant.step, stock: offer.stock });
     if (quantity !== line.quantity) {
@@ -80,7 +90,8 @@ export function priceOrder(lines: CheckoutInput["lines"], products: Product[], a
       categorySlug: categoryBySlug(product.categorySlug)?.slug ?? product.categorySlug,
       unitPriceCentavos,
       quantity,
-      lineTotalCentavos: Math.round(unitPriceCentavos * quantity),
+      // The same sum the cart shows, so what's on screen is what's charged, to the centavo.
+      lineTotalCentavos: toCentavos(lineTotal(unitPrice, quantity)),
       leadDays: offer.leadDays,
       weightKg: variant.weightKg * quantity,
     });

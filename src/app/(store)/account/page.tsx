@@ -1,16 +1,16 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AddSiteForm, AuthForms, RemoveSiteButton, SignOutButton } from "@/components/account/account-forms";
+import { AddSiteForm, AuthForms, ClaimOrderButton, RemoveSiteButton, SignOutButton } from "@/components/account/account-forms";
 import { CheckIcon } from "@/components/home/icons";
 import { BuyAgainButton } from "@/components/orders/order-bits";
 import "@/components/checkout/checkout.css";
 import "@/components/orders/orders.css";
 import { formatDay } from "@/lib/delivery";
 import { formatPeso } from "@/lib/format";
-import { ordersForUser, sitesForUser } from "@/lib/orders/repo";
+import { ordersByNumbers, ordersForUser, sitesForUser } from "@/lib/orders/repo";
 import { formatMobile } from "@/lib/orders/rules";
-import { currentUser } from "@/lib/orders/session";
+import { currentUser, provenOrders } from "@/lib/orders/session";
 
 export const metadata: Metadata = {
   title: "Your account | MatExpress",
@@ -52,7 +52,9 @@ async function AccountContent({ searchParams }: { searchParams: Promise<RawParam
     );
   }
 
-  const [orders, sites] = await Promise.all([ordersForUser(user.id), sitesForUser(user.id)]);
+  const [orders, sites, proven] = await Promise.all([ordersForUser(user.id), sitesForUser(user.id), provenOrders()]);
+  // Placed from this browser without an account. They might be someone else's, so they only join when asked.
+  const unclaimed = (await ordersByNumbers(proven)).filter((order) => !order.userId);
 
   return (
     <div className="hm-frame hm-account">
@@ -65,29 +67,51 @@ async function AccountContent({ searchParams }: { searchParams: Promise<RawParam
       </div>
 
       <div className="hm-account-grid hm-arrive">
-        <section aria-labelledby="hm-account-orders">
-          <h2 id="hm-account-orders">Your orders</h2>
-          {orders.length === 0 ? (
-            <p className="hm-account-empty">
-              Nothing yet. <Link href="/categories">Explore materials</Link> and your orders will show up here.
-            </p>
-          ) : (
-            <ul className="hm-orderlist">
-              {orders.map((order) => (
-                <li key={order.number}>
-                  <span className="hm-orderlist-main">
-                    <Link href={`/orders/${order.number}`}>{order.number}</Link>
-                    <small>
-                      {formatDay(new Date(`${order.deliveryDate}T12:00:00+08:00`))}, {order.street}
-                    </small>
-                  </span>
-                  <strong>{formatPeso(order.totalCentavos / 100)}</strong>
-                  <BuyAgainButton number={order.number} />
-                </li>
-              ))}
-            </ul>
+        <div>
+          <section aria-labelledby="hm-account-orders">
+            <h2 id="hm-account-orders">Your orders</h2>
+            {orders.length === 0 ? (
+              <p className="hm-account-empty">
+                Nothing yet. <Link href="/categories">Explore materials</Link> and your orders will show up here.
+              </p>
+            ) : (
+              <ul className="hm-orderlist">
+                {orders.map((order) => (
+                  <li key={order.number}>
+                    <span className="hm-orderlist-main">
+                      <Link href={`/orders/${order.number}`}>{order.number}</Link>
+                      <small>
+                        {formatDay(new Date(`${order.deliveryDate}T12:00:00+08:00`))}, {order.street}
+                      </small>
+                    </span>
+                    <strong>{formatPeso(order.totalCentavos / 100)}</strong>
+                    <BuyAgainButton number={order.number} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {unclaimed.length > 0 && (
+            <section className="hm-unclaimed" aria-labelledby="hm-account-unclaimed">
+              <h2 id="hm-account-unclaimed">Placed from this computer</h2>
+              <ul className="hm-orderlist">
+                {unclaimed.map((order) => (
+                  <li key={order.number}>
+                    <span className="hm-orderlist-main">
+                      <Link href={`/orders/${order.number}`}>{order.number}</Link>
+                      <small>
+                        {order.street}, {order.area}
+                      </small>
+                    </span>
+                    <strong>{formatPeso(order.totalCentavos / 100)}</strong>
+                    <ClaimOrderButton number={order.number} />
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
-        </section>
+        </div>
 
         <section aria-labelledby="hm-account-sites">
           <h2 id="hm-account-sites">Your sites</h2>

@@ -27,7 +27,7 @@ const hourFormat = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hour:
 const dayFormat = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, weekday: "short", month: "short", day: "numeric" });
 const keyFormat = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
 
-export const areaFee = (area: string) => FEES[area] ?? 1000;
+export const areaFee = (area: string) => (Object.hasOwn(FEES, area) ? FEES[area] : 1000);
 
 /** One fee per order, however many sellers the truck collects from. */
 export function deliveryFee(area: string, subtotal: number) {
@@ -36,7 +36,7 @@ export function deliveryFee(area: string, subtotal: number) {
 
 export function arrivalDate(now: Date, leadDays: number, area: string): Date {
   const afterCutoff = Number(hourFormat.format(now)) >= CUTOFF_HOUR;
-  const days = leadDays + (afterCutoff ? 1 : 0) + (EXTRA_DAYS[area] ?? 0);
+  const days = leadDays + (afterCutoff ? 1 : 0) + (Object.hasOwn(EXTRA_DAYS, area) ? EXTRA_DAYS[area] : 0);
   return new Date(now.getTime() + days * DAY_MS);
 }
 
@@ -68,3 +68,15 @@ export function bookableDays(earliest: Date, count = 7) {
 }
 
 export const DELIVERY_WINDOWS = ["8 AM to 12 NN", "1 PM to 5 PM"];
+
+const WINDOW_END_HOUR: Record<string, number> = { "8 AM to 12 NN": 12, "1 PM to 5 PM": 17 };
+
+/** How long a truck needs from the last order to the site. It lines up with the cut-off: the last window of the day closes at 2 PM. */
+export const WINDOW_NOTICE_HOURS = 3;
+
+/** The windows that can still be met on a day. Later days have them all; today's close before they end. */
+export function openWindows(deliveryDate: string, now: Date) {
+  if (deliveryDate !== dayKey(now)) return DELIVERY_WINDOWS;
+  const hour = Number(hourFormat.format(now));
+  return DELIVERY_WINDOWS.filter((window) => WINDOW_END_HOUR[window] - hour > WINDOW_NOTICE_HOURS);
+}

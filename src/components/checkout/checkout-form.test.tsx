@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toLine } from "@/lib/catalog/card";
 import { productBySlug } from "@/lib/catalog/data/products";
@@ -141,6 +141,82 @@ describe("Checkout", () => {
     await userEvent.click(await screen.findByRole("button", { name: /^Place order/ }));
     await waitFor(() => expect(mocks.placeOrder).toHaveBeenCalledTimes(2));
     expect(mocks.placeOrder.mock.calls[1][0].idempotencyKey).toBe(mocks.placeOrder.mock.calls[0][0].idempotencyKey);
+  });
+
+  test("a reply lost on a bad connection can't become a second order after a refresh", async () => {
+    mocks.placeOrder.mockRejectedValueOnce(new Error("offline"));
+    await show(smallOrder());
+    await fillSite();
+    await userEvent.click(place());
+    expect(await screen.findByText(/We couldn't reach the store/)).toBeInTheDocument();
+    cleanup();
+
+    render(<Checkout />);
+    await userEvent.click(await screen.findByRole("button", { name: /^Place order/ }));
+    await waitFor(() => expect(mocks.placeOrder).toHaveBeenCalledTimes(2));
+    expect(mocks.placeOrder.mock.calls[1][0].idempotencyKey).toBe(mocks.placeOrder.mock.calls[0][0].idempotencyKey);
+  });
+
+  test("a different order gets a different key, so it's never answered with the old one", async () => {
+    mocks.placeOrder.mockRejectedValueOnce(new Error("offline"));
+    await show(smallOrder());
+    await fillSite();
+    await userEvent.click(place());
+    expect(await screen.findByText(/We couldn't reach the store/)).toBeInTheDocument();
+    await act(async () => useCartStore.getState().setQuantity(useCartStore.getState().lines[0].id, 3));
+
+    await userEvent.click(await screen.findByRole("button", { name: /^Place order/ }));
+    await waitFor(() => expect(mocks.placeOrder).toHaveBeenCalledTimes(2));
+    expect(mocks.placeOrder.mock.calls[1][0].idempotencyKey).not.toBe(mocks.placeOrder.mock.calls[0][0].idempotencyKey);
+  });
+
+  test("a placed order forgets its key, so the next one is new", async () => {
+    await show(smallOrder());
+    await fillSite();
+    await userEvent.click(place());
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalled());
+    expect(sessionStorage.getItem("matexpress-checkout-attempt")).toBeNull();
+  });
+
+  test("an area changed elsewhere in the store shows here, and goes with the order", async () => {
+    await show(smallOrder());
+    await act(async () => usePreferences.getState().setArea("Cavite"));
+    expect(screen.getByLabelText("Area")).toHaveValue("Cavite");
+    await fillSite();
+    await userEvent.click(place());
+    await waitFor(() => expect(mocks.placeOrder).toHaveBeenCalled());
+    expect(mocks.placeOrder.mock.calls[0][0].site.area).toBe("Cavite");
+  });
+
+  test("if the server says a big truck is coming, the question appears even when this cart looks light", async () => {
+    mocks.placeOrder.mockResolvedValue({ kind: "invalid", errors: { truckAccess: "Tell us whether a big truck can reach the gate." } });
+    await show(smallOrder());
+    await fillSite();
+    expect(screen.queryByText(/Can it reach the gate/)).not.toBeInTheDocument();
+    await userEvent.click(place());
+    expect(await screen.findByText("Tell us whether a big truck can reach the gate.")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Not sure, call me first" })).toBeInTheDocument();
+  });
+
+  describe("late in the morning", () => {
+    beforeEach(() => vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-02T13:30:00+08:00") }));
+    afterEach(() => vi.useRealTimers());
+
+    test("a window that's already gone can't be picked, and today's order goes in the later one", async () => {
+      await show(smallOrder());
+      expect(screen.getByRole("radio", { name: "8 AM to 12 NN" })).toBeDisabled();
+      expect(screen.getByRole("radio", { name: "1 PM to 5 PM" })).toBeChecked();
+      await fillSite();
+      await userEvent.click(place());
+      await waitFor(() => expect(mocks.placeOrder).toHaveBeenCalled());
+      expect(mocks.placeOrder.mock.calls[0][0]).toMatchObject({ deliveryDate: "2026-11-02", deliveryWindow: "1 PM to 5 PM" });
+    });
+
+    test("tomorrow has both windows", async () => {
+      await show(smallOrder());
+      await userEvent.click(screen.getAllByRole("radio", { name: /Nov/ })[1]);
+      expect(screen.getByRole("radio", { name: "8 AM to 12 NN" })).toBeEnabled();
+    });
   });
 
   test("a load that needs a big truck asks if it can reach the gate", async () => {

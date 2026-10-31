@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { TrackForm } from "@/components/orders/order-bits";
+import { ForgetOrdersButton, TrackForm } from "@/components/orders/order-bits";
 import "@/components/checkout/checkout.css";
 import "@/components/orders/orders.css";
 import { formatPeso } from "@/lib/format";
@@ -32,6 +32,7 @@ async function RecentOrders() {
           </li>
         ))}
       </ul>
+      <ForgetOrdersButton />
     </section>
   );
 }

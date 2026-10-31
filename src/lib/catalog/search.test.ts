@@ -5,6 +5,15 @@ import { alternativeQueries, buildSearchIndex, searchProducts } from "./search";
 const index = buildSearchIndex(products);
 const slugs = (query: string, limit = 6) => searchProducts(index, query, limit).items.map((p) => p.slug);
 
+describe("words every object has", () => {
+  const index = buildSearchIndex(products);
+
+  test.each(["constructor", "constructors", "__proto__", "toString", "hasOwnProperty", "valueOf"])("searching %s finds nothing and doesn't fall over", (word) => {
+    expect(() => searchProducts(index, word)).not.toThrow();
+    expect(() => alternativeQueries(index, `${word} cement`)).not.toThrow();
+  });
+});
+
 describe("searchProducts", () => {
   test("ignores case and outer spaces", () => {
     expect(slugs("  CEMENT ")).toContain("portland-cement");

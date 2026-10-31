@@ -34,7 +34,7 @@ export function SavedGrid({ cards }: { cards: CardData[] }) {
 
   if (hydrated && items.length === 0) {
     return (
-      <div className="hm-saved-none">
+      <div className="hm-saved-none hm-arrive">
         <HeartIcon />
         <h2>Nothing saved yet</h2>
         <p>Tap the heart on any material to keep it here. No account needed.</p>
@@ -79,8 +79,9 @@ export function ImportSharedList({ slugs }: { slugs: string[] }) {
       const { saved } = usePreferences.getState();
       slugs.filter((slug) => !saved.includes(slug)).forEach(toggleSaved);
     };
-    if (usePreferences.persist.hasHydrated()) merge();
-    return usePreferences.persist.onFinishHydration(merge);
+    const { persist } = usePreferences;
+    if (!persist || persist.hasHydrated()) merge();
+    return persist?.onFinishHydration(merge);
   }, [slugs, toggleSaved]);
 
   return null;

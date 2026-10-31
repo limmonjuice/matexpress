@@ -65,14 +65,14 @@ export function parseListingParams(raw: RawParams, { defaultSort = "best" }: { d
   const show = Number(asList(raw.show)[0]);
   const filters: Record<string, string[]> = {};
   for (const [key, value] of Object.entries(raw)) {
-    if (RESERVED.has(key)) continue;
+    if (RESERVED.has(key) || key === "__proto__") continue;
     const values = asList(value).filter(Boolean);
     if (values.length) filters[key] = values;
   }
   const q = asList(raw.q)[0];
   return {
     sub: asList(raw.sub)[0] || undefined,
-    sort: sort && sort in SORT_LABELS ? (sort as SortKey) : defaultSort,
+    sort: sort && Object.hasOwn(SORT_LABELS, sort) ? (sort as SortKey) : defaultSort,
     defaultSort,
     show: Number.isInteger(show) && show >= BATCH ? show : BATCH,
     filters,
@@ -293,8 +293,8 @@ export type ListingChange =
   | { show: number }
   | { sub: string | null };
 
-/** The address of this list after one change. Filtering starts the list over; sorting keeps the depth. */
-export function listingHref(pathname: string, params: ListingParams, change: ListingChange) {
+/** This list after one change. Filtering starts the list over; sorting keeps the depth. */
+export function applyListingChange(params: ListingParams, change: ListingChange): ListingParams {
   let { sub, sort, show } = params;
   let filters = params.filters;
 
@@ -316,6 +316,12 @@ export function listingHref(pathname: string, params: ListingParams, change: Lis
     show = BATCH;
   }
 
+  return { ...params, sub, sort, show, filters };
+}
+
+/** The address of a list in this state. */
+export function paramsHref(pathname: string, params: ListingParams) {
+  const { sub, sort, show, filters } = params;
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params.extra)) query.set(key, value);
   if (sub) query.set("sub", sub);
@@ -325,6 +331,8 @@ export function listingHref(pathname: string, params: ListingParams, change: Lis
   const text = query.toString();
   return text ? `${pathname}?${text}` : pathname;
 }
+
+export const listingHref = (pathname: string, params: ListingParams, change: ListingChange) => paramsHref(pathname, applyListingChange(params, change));
 
 /** Plain facts for the top of a list, worked out from the list itself. */
 export function listFacts(products: Product[], scope: ListingScope) {

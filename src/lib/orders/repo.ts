@@ -36,6 +36,10 @@ export const orderStore: OrderStore = {
       db.insert(orderEvents).values({ id: crypto.randomUUID(), orderId: order.id, type: "placed" }),
     ]);
   },
+
+  async recordPayment(number, { status, ref }) {
+    await db.update(orders).set({ paymentStatus: status, paymentRef: ref }).where(eq(orders.number, number));
+  },
 };
 
 export async function findOrder(number: string) {

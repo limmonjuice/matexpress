@@ -960,6 +960,10 @@
     width: 112px;
     margin: 0;
   }
+  .hm-band-sketch .hm-job-drawing {
+    width: min(72%, 240px);
+    margin: 0 auto;
+  }
   .hm-job-name {
     grid-column: 2;
     font-size: 1rem;

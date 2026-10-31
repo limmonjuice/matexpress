@@ -39,10 +39,12 @@ export function CartPage({ products }: { products: Product[] }) {
       const result = reconcileCart(current, products);
       // Added to, not replaced: a second check finds nothing new, and what the first one changed must still be said.
       setNotices((seen) => [...seen, ...result.notices.filter((n) => !seen.some((s) => s.lineId === n.lineId && s.kind === n.kind))]);
-      if (result.notices.length) setLines(result.lines);
+      // Saved even with nothing to say: checkout prices from these lines, and stale ones would be refused there.
+      if (JSON.stringify(result.lines) !== JSON.stringify(current)) setLines(result.lines);
     };
-    if (useCartStore.persist.hasHydrated()) check();
-    return useCartStore.persist.onFinishHydration(check);
+    const { persist } = useCartStore;
+    if (!persist || persist.hasHydrated()) check();
+    return persist?.onFinishHydration(check);
   }, [products, setLines]);
 
   if (hydrated && lines.length === 0) return <EmptyCart />;
@@ -280,7 +282,7 @@ function CartRow({ line, products }: { line: CartLine; products: Product[] }) {
 
 function EmptyCart() {
   return (
-    <section className="hm-frame hm-cart-none">
+    <section className="hm-frame hm-cart-none hm-arrive">
       <LoadTruck lines={[]} className="hm-truck hm-truck--hero" />
       <h1>Your truck is empty</h1>
       <p>Load it from any seller. One truck collects from all of them, and you pay once.</p>

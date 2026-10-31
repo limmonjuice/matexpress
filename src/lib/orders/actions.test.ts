@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { applyToSell, buyAgain, forgetBrowserOrders, lookupOrder, removeSite, saveSite } from "./actions";
+import { applyToSell, buyAgain, claimOrder, forgetBrowserOrders, lookupOrder, placeOrder, removeSite, saveSite } from "./actions";
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
@@ -15,11 +15,12 @@ const mocks = vi.hoisted(() => ({
   provenOrders: vi.fn(),
   grantOrderAccess: vi.fn(),
   forgetOrderAccess: vi.fn(),
+  claimOrders: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("./repo", () => ({
-  claimOrders: vi.fn(),
+  claimOrders: mocks.claimOrders,
   deleteSite: mocks.deleteSite,
   findOrder: mocks.findOrder,
   insertSellerApplication: mocks.insertSellerApplication,
@@ -43,6 +44,36 @@ const form = (fields: Record<string, string>) => {
 };
 
 const NOT_FOUND = "We couldn't find an order with that number and mobile. Check both and try again.";
+const SITE_ID = "6f1c2b1e-3d4a-4b5c-8d6e-7f8091a2b3c4";
+
+describe("placeOrder", () => {
+  const good = {
+    idempotencyKey: "0d9e8f7a-6b5c-4d3e-9f2a-1b0c9d8e7f6a",
+    site: { contactName: "Rosa Santos", mobile: "0917 123 4567", street: "12 Sampaguita St", city: "San Roque, Antipolo", area: "Rizal" },
+    deliveryDate: "2026-11-03",
+    deliveryWindow: "8 AM to 12 NN",
+    paymentMethod: "gcash",
+    lines: [{ slug: "portland-cement", variantId: "40-kg", sellerSlug: "dalisay-hardware", quantity: 1, unitPrice: 252 }],
+  };
+
+  test.each([
+    ["nothing at all", null],
+    ["a string", "order"],
+    ["a key that isn't a uuid", { ...good, idempotencyKey: "someone-elses-key" }],
+    ["a very long key", { ...good, idempotencyKey: "x".repeat(100000) }],
+    ["notes that aren't text", { ...good, site: { ...good.site, notes: ["x"] } }],
+    ["a site that isn't one", { ...good, site: "here" }],
+    ["lines that aren't a list", { ...good, lines: "all" }],
+    ["a line with a text quantity", { ...good, lines: [{ ...good.lines[0], quantity: "1" }] }],
+    ["too many lines", { ...good, lines: Array.from({ length: 101 }, () => good.lines[0]) }],
+    ["a truck answer that isn't text", { ...good, truckAccess: { a: 1 } }],
+  ])("%s is turned away before anything happens", async (_, bad) => {
+    vi.clearAllMocks();
+    expect(await placeOrder(bad as never)).toMatchObject({ kind: "changed" });
+    expect(mocks.currentUser).not.toHaveBeenCalled();
+    expect(mocks.grantOrderAccess).not.toHaveBeenCalled();
+  });
+});
 
 describe("lookupOrder", () => {
   beforeEach(() => {
@@ -67,6 +98,31 @@ describe("lookupOrder", () => {
   test.each(["0917 123 4567", "+63 917 123 4567", "09171234567"])("the right number with %s opens the order", async (mobile) => {
     await expect(lookupOrder(undefined, form({ number: " mx-aaaa1111 ", mobile }))).rejects.toThrow("redirect:/orders/MX-AAAA1111");
     expect(mocks.grantOrderAccess).toHaveBeenCalledWith("MX-AAAA1111");
+  });
+});
+
+describe("claimOrder", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("adds the one order asked for, for the browser that proved it", async () => {
+    mocks.currentUser.mockResolvedValue({ id: "u1" });
+    mocks.provenOrders.mockResolvedValue(["MX-AAAA1111", "MX-BBBB2222"]);
+    await claimOrder("MX-AAAA1111");
+    expect(mocks.claimOrders).toHaveBeenCalledWith(["MX-AAAA1111"], "u1");
+  });
+
+  test("an order this browser can't prove stays where it is", async () => {
+    mocks.currentUser.mockResolvedValue({ id: "u1" });
+    mocks.provenOrders.mockResolvedValue(["MX-BBBB2222"]);
+    await claimOrder("MX-AAAA1111");
+    expect(mocks.claimOrders).not.toHaveBeenCalled();
+  });
+
+  test("it needs an account", async () => {
+    mocks.currentUser.mockResolvedValue(undefined);
+    mocks.provenOrders.mockResolvedValue(["MX-AAAA1111"]);
+    await claimOrder("MX-AAAA1111");
+    expect(mocks.claimOrders).not.toHaveBeenCalled();
   });
 });
 
@@ -123,13 +179,27 @@ describe("saved sites", () => {
     expect(mocks.insertSite).toHaveBeenCalledWith("u1", { ...site, mobile: "+639171234567" });
   });
 
+  test("something that isn't a site is refused, not stored", async () => {
+    mocks.currentUser.mockResolvedValue({ id: "u1" });
+    for (const bad of [null, "x", { ...site, street: ["x"] }, { ...site, notes: { a: 1 } }, { ...site, city: "x".repeat(2000) }]) {
+      expect((await saveSite(bad as never)).errors).toBeDefined();
+    }
+    expect(mocks.insertSite).not.toHaveBeenCalled();
+  });
+
+  test("an id that isn't one goes nowhere near the database", async () => {
+    mocks.currentUser.mockResolvedValue({ id: "u1" });
+    for (const bad of ["s1", "' OR 1=1", 5, null, { id: 1 }]) await removeSite(bad as never);
+    expect(mocks.deleteSite).not.toHaveBeenCalled();
+  });
+
   test("removing only ever touches the signed-in account's own sites", async () => {
     mocks.currentUser.mockResolvedValue(undefined);
-    await removeSite("s1");
+    await removeSite(SITE_ID);
     expect(mocks.deleteSite).not.toHaveBeenCalled();
     mocks.currentUser.mockResolvedValue({ id: "u1" });
-    await removeSite("s1");
-    expect(mocks.deleteSite).toHaveBeenCalledWith("u1", "s1");
+    await removeSite(SITE_ID);
+    expect(mocks.deleteSite).toHaveBeenCalledWith("u1", SITE_ID);
   });
 });
 

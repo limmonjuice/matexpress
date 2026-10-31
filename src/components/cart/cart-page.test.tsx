@@ -50,7 +50,8 @@ describe("CartPage", () => {
   });
 
   test("names nobody when everyone's ready together", async () => {
-    await show([{ ...cementFromDalisay(), leadDays: 1 }, { ...rebarFromBakal(), leadDays: 1 }]);
+    // Both ready tomorrow, by the catalog: the cart refreshes lead times as it loads.
+    await show([line("washed-sand", "fine", "bato-aggregates", 1), rebarFromBakal()]);
     await waitFor(() => expect(screen.getByText(/Arrives together/)).toBeInTheDocument());
     expect(screen.queryByText(/is the last one ready/)).not.toBeInTheDocument();
   });
@@ -78,7 +79,7 @@ describe("CartPage", () => {
 
     await waitFor(() =>
       expect(notices()).toEqual([
-        "Deformed Rebar changed from ₱100 to ₱236.",
+        "Deformed Rebar changed from ₱100 to ₱214.",
         "Only 640 left of Portland Cement Type I, so we lowered your quantity.",
         "Discontinued Item is no longer available from this seller.",
       ]),

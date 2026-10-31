@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useNow } from "@/hooks/use-now";
 import { ChevronDownIcon, CloseIcon, FilterIcon, StarIcon } from "@/components/home/icons";
-import { BATCH, listingHref, SORT_LABELS, type Facet, type ListingChange, type ListingParams, type ListingResult, type SortKey } from "@/lib/catalog/listing";
+import { applyListingChange, BATCH, listingHref, paramsHref, SORT_LABELS, type Facet, type ListingChange, type ListingParams, type ListingResult, type SortKey } from "@/lib/catalog/listing";
 import { arrivalDate, formatDay } from "@/lib/delivery";
 import { plural } from "@/lib/format";
 import { usePreferences } from "@/stores/preferences-store";
@@ -22,27 +22,42 @@ type Props = {
 /** A long list of options starts short, so one filter never pushes the rest out of reach. */
 const SHORT_LIST = 6;
 
-export function ListingView({ pathname, params, result, shown, sorts, children }: Props) {
+export function ListingView({ pathname, params: loaded, result, shown, sorts, children }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // Ahead of the server on a slow connection: a tick shows at once, and the next click builds on it instead of losing it.
+  const [params, setParams] = useOptimistic(loaded);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useRef<HTMLButtonElement>(null);
   const tools = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const [toolsVisible, setToolsVisible] = useState(true);
+  const [listVisible, setListVisible] = useState(true);
 
   const go = (change: ListingChange) => {
-    startTransition(() => router.replace(listingHref(pathname, params, change), { scroll: false }));
+    startTransition(() => {
+      const next = applyListingChange(params, change);
+      setParams(next);
+      router.replace(paramsHref(pathname, next), { scroll: false });
+    });
   };
 
   const appliedCount = result.applied.length;
+  const showFloat = !toolsVisible && listVisible && result.total > 0;
 
-  // Once the top row has scrolled away, the phone's Filter button floats under the thumb.
+  // Once the top row has scrolled away, the phone's Filter button floats under the thumb, until the list ends.
   useEffect(() => {
-    const el = tools.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(([entry]) => setToolsVisible(entry.isIntersecting));
-    observer.observe(el);
-    return () => observer.disconnect();
+    const toolsEl = tools.current;
+    const listEl = list.current;
+    if (!toolsEl || !listEl || typeof IntersectionObserver === "undefined") return;
+    const watchTools = new IntersectionObserver(([entry]) => setToolsVisible(entry.isIntersecting));
+    const watchList = new IntersectionObserver(([entry]) => setListVisible(entry.isIntersecting));
+    watchTools.observe(toolsEl);
+    watchList.observe(listEl);
+    return () => {
+      watchTools.disconnect();
+      watchList.disconnect();
+    };
   }, []);
 
   // The route stays alive when hidden. Coming back to an open drawer would surprise anyone.
@@ -89,10 +104,10 @@ export function ListingView({ pathname, params, result, shown, sorts, children }
 
       <div className="hm-listing-grid">
         <aside className="hm-filters" aria-label="Filters" data-lenis-prevent>
-          <FilterGroups facets={result.facets} onToggle={(key, value) => go({ toggle: { key, value } })} />
+          <FilterGroups facets={result.facets} ticked={params.filters} onToggle={(key, value) => go({ toggle: { key, value } })} />
         </aside>
 
-        <div className="hm-results">
+        <div className="hm-results" ref={list}>
           <div className="hm-tools" ref={tools}>
             <p className="hm-count-line" role="status">
               {plural(result.total, "product")}
@@ -176,7 +191,7 @@ export function ListingView({ pathname, params, result, shown, sorts, children }
             </button>
           </div>
           <div className="hm-drawer-scroll hm-filters-drawer">
-            <FilterGroups facets={result.facets} idPrefix="d-" onToggle={(key, value) => go({ toggle: { key, value } })} />
+            <FilterGroups facets={result.facets} ticked={params.filters} idPrefix="d-" onToggle={(key, value) => go({ toggle: { key, value } })} />
           </div>
           <div className="hm-filters-foot">
             {appliedCount > 0 && (
@@ -191,7 +206,7 @@ export function ListingView({ pathname, params, result, shown, sorts, children }
         </div>
       </div>
 
-      <button type="button" className="hm-filter-float" data-show={!toolsVisible && result.total > 0} tabIndex={toolsVisible ? -1 : 0} onClick={() => setDrawerOpen(true)}>
+      <button type="button" className="hm-filter-float" data-show={showFloat} tabIndex={showFloat ? 0 : -1} onClick={() => setDrawerOpen(true)}>
         <FilterIcon />
         Filter
         {appliedCount > 0 && <span>{appliedCount}</span>}
@@ -200,22 +215,25 @@ export function ListingView({ pathname, params, result, shown, sorts, children }
   );
 }
 
-function FilterGroups({ facets, onToggle, idPrefix = "" }: { facets: Facet[]; onToggle: (key: string, value: string) => void; idPrefix?: string }) {
+type GroupProps = { ticked: Record<string, string[]>; onToggle: (key: string, value: string) => void };
+
+function FilterGroups({ facets, ticked, onToggle, idPrefix = "" }: GroupProps & { facets: Facet[]; idPrefix?: string }) {
   return (
     <>
       {facets.map((facet) => (
-        <FilterGroup key={facet.key} facet={facet} onToggle={onToggle} idPrefix={idPrefix} />
+        <FilterGroup key={facet.key} facet={facet} ticked={ticked} onToggle={onToggle} idPrefix={idPrefix} />
       ))}
     </>
   );
 }
 
-function FilterGroup({ facet, onToggle, idPrefix }: { facet: Facet; onToggle: (key: string, value: string) => void; idPrefix: string }) {
+function FilterGroup({ facet, ticked, onToggle, idPrefix }: GroupProps & { facet: Facet; idPrefix: string }) {
   const [expanded, setExpanded] = useState(false);
   const now = useNow();
   const area = usePreferences((s) => s.area);
   const long = facet.values.length > SHORT_LIST + 1;
-  const values = long && !expanded ? facet.values.filter((v, i) => i < SHORT_LIST || v.selected) : facet.values;
+  const isTicked = (value: string) => (ticked[facet.key] ?? []).includes(value);
+  const values = long && !expanded ? facet.values.filter((v, i) => i < SHORT_LIST || isTicked(v.value)) : facet.values;
 
   // Dates, not speeds, as soon as the browser knows the day.
   const label = (value: Facet["values"][number]) => {
@@ -227,12 +245,12 @@ function FilterGroup({ facet, onToggle, idPrefix }: { facet: Facet; onToggle: (k
     <fieldset className="hm-filter">
       <legend>{facet.label}</legend>
       {values.map((value) => (
-        <label key={value.value} data-empty={value.count === 0 && !value.selected}>
+        <label key={value.value} data-empty={value.count === 0 && !isTicked(value.value)}>
           <input
             type="checkbox"
             id={`${idPrefix}${facet.key}-${value.value}`}
-            checked={value.selected}
-            disabled={value.count === 0 && !value.selected}
+            checked={isTicked(value.value)}
+            disabled={value.count === 0 && !isTicked(value.value)}
             onChange={() => onToggle(facet.key, value.value)}
           />
           <span className="hm-filter-box" aria-hidden="true" />

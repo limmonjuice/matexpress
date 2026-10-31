@@ -10,29 +10,50 @@ import { SellerMark } from "@/components/product/seller-mark";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useNow } from "@/hooks/use-now";
 import { authClient } from "@/lib/auth-client";
-import { arrivalDate, bookableDays, dayKey, deliveryAreas, deliveryFee, DELIVERY_WINDOWS } from "@/lib/delivery";
+import { arrivalDate, bookableDays, dayKey, deliveryAreas, deliveryFee, DELIVERY_WINDOWS, openWindows } from "@/lib/delivery";
 import { formatPeso, plural } from "@/lib/format";
 import { formatWeight, loadFor } from "@/lib/load";
 import { listMySites, placeOrder, saveSite } from "@/lib/orders/actions";
 import type { OrderProblem } from "@/lib/orders/price-order";
-import { CHECKOUT_DRAFT_KEY, FIELD_LIMITS, formatMobile, PAYMENT_METHODS, TRUCK_ACCESS, validateCheckout, type CheckoutInput, type FieldErrors, type SiteFields } from "@/lib/orders/rules";
+import { CHECKOUT_ATTEMPT_KEY, CHECKOUT_DRAFT_KEY, FIELD_LIMITS, formatMobile, PAYMENT_METHODS, TRUCK_ACCESS, validateCheckout, type CheckoutInput, type FieldErrors, type SiteFields } from "@/lib/orders/rules";
 import { priceForQuantity } from "@/lib/pricing";
 import { cartTotal, cartWeight, groupBySeller, lineCost, useCartStore } from "@/stores/cart-store";
 import { usePreferences } from "@/stores/preferences-store";
 import "./checkout.css";
 
-type Draft = SiteFields & { truckAccess?: string; deliveryDate?: string; deliveryWindow: string; paymentMethod: string };
+type Draft = Omit<SiteFields, "area"> & { truckAccess?: string; deliveryDate?: string; deliveryWindow: string; paymentMethod: string };
+
+type Attempt = { key: string; fingerprint: string };
 
 const article = (word: string) => (/^[aeiou6]/i.test(word) ? "an" : "a");
 
-function readDraft(area: string): Draft {
-  const empty: Draft = { contactName: "", mobile: "", street: "", city: "", area, notes: "", deliveryWindow: DELIVERY_WINDOWS[0], paymentMethod: "gcash" };
+function readDraft(): Draft {
+  const empty: Draft = { contactName: "", mobile: "", street: "", city: "", notes: "", deliveryWindow: DELIVERY_WINDOWS[0], paymentMethod: "gcash" };
   try {
     const saved = sessionStorage.getItem(CHECKOUT_DRAFT_KEY);
     return saved ? { ...empty, ...JSON.parse(saved) } : empty;
   } catch {
     return empty;
   }
+}
+
+/**
+ * One key per order being placed. It outlives a refresh, so a reply lost on a bad connection can't
+ * become a second order. It changes with the order, so a different order is never answered with the old one.
+ */
+function keyFor(fingerprint: string, current: Attempt | null): Attempt {
+  let attempt = current;
+  if (!attempt) {
+    try {
+      attempt = JSON.parse(sessionStorage.getItem(CHECKOUT_ATTEMPT_KEY) ?? "null");
+    } catch {}
+  }
+  if (attempt?.fingerprint === fingerprint) return attempt;
+  const next = { key: crypto.randomUUID(), fingerprint };
+  try {
+    sessionStorage.setItem(CHECKOUT_ATTEMPT_KEY, JSON.stringify(next));
+  } catch {}
+  return next;
 }
 
 /** Waits for the saved cart, so nothing renders from an empty one first. */
@@ -55,30 +76,34 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
   const router = useRouter();
   const lines = useCartStore((s) => s.lines);
   const clearCart = useCartStore((s) => s.clear);
-  const preferredArea = usePreferences((s) => s.area);
-  const setPreferredArea = usePreferences((s) => s.setArea);
+  // The one area the whole store is using, so changing it in the cart or the header changes it here.
+  const area = usePreferences((s) => s.area);
+  const setArea = usePreferences((s) => s.setArea);
   const now = useNow();
   const { data: session } = authClient.useSession();
 
-  const [draft, setDraft] = useState<Draft>(() => readDraft(preferredArea));
+  const [draft, setDraft] = useState<Draft>(readDraft);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [problems, setProblems] = useState<OrderProblem[]>([]);
   const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
   const [savedSites, setSavedSites] = useState<(SiteFields & { id: string })[]>([]);
   const [saveThisSite, setSaveThisSite] = useState(false);
-  const attempt = useRef<string | null>(null);
+  const attempt = useRef<Attempt | null>(null);
 
   const total = cartTotal(lines);
-  const fee = deliveryFee(draft.area, total);
+  const fee = deliveryFee(area, total);
   const weight = cartWeight(lines);
   const load = loadFor(weight);
   const groups = groupBySeller(lines);
   const slowest = Math.max(...lines.map((l) => l.leadDays));
 
-  const days = useMemo(() => (now ? bookableDays(arrivalDate(now, slowest, draft.area)) : []), [now, slowest, draft.area]);
+  const days = useMemo(() => (now ? bookableDays(arrivalDate(now, slowest, area)) : []), [now, slowest, area]);
   const keys = days.map(dayKey);
   const deliveryDate = draft.deliveryDate && keys.includes(draft.deliveryDate) ? draft.deliveryDate : keys[0];
+  // Today's early windows close as the day goes on, so a choice made earlier can stop being possible.
+  const windows = now && deliveryDate ? openWindows(deliveryDate, now) : DELIVERY_WINDOWS;
+  const deliveryWindow = windows.includes(draft.deliveryWindow) ? draft.deliveryWindow : windows[0];
 
   // A refresh or a trip back to the cart shouldn't lose what was typed.
   useEffect(() => {
@@ -93,8 +118,8 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
   };
 
   const fillSite = (site: SiteFields) => {
-    setDraft((d) => ({ ...d, contactName: site.contactName, mobile: formatMobile(site.mobile), street: site.street, city: site.city, area: site.area, notes: site.notes ?? "" }));
-    setPreferredArea(site.area);
+    setDraft((d) => ({ ...d, contactName: site.contactName, mobile: formatMobile(site.mobile), street: site.street, city: site.city, notes: site.notes ?? "" }));
+    setArea(site.area);
     setErrors({});
   };
 
@@ -121,17 +146,17 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
 
   const submit = () => {
     if (pending) return;
-    // One attempt, one key: pressing twice can't make two orders.
-    attempt.current ??= crypto.randomUUID();
-    const input: CheckoutInput = {
-      idempotencyKey: attempt.current,
-      site: { contactName: draft.contactName, mobile: draft.mobile, street: draft.street, city: draft.city, area: draft.area, notes: draft.notes },
+    const order: Omit<CheckoutInput, "idempotencyKey"> = {
+      site: { contactName: draft.contactName, mobile: draft.mobile, street: draft.street, city: draft.city, area, notes: draft.notes },
       truckAccess: load.needsAccess ? draft.truckAccess : undefined,
       deliveryDate: deliveryDate ?? "",
-      deliveryWindow: draft.deliveryWindow,
+      deliveryWindow: deliveryWindow ?? "",
       paymentMethod: draft.paymentMethod,
       lines: lines.map((l) => ({ slug: l.slug, variantId: l.variantId, sellerSlug: l.sellerSlug, quantity: l.quantity, unitPrice: priceForQuantity(l, l.quantity) })),
     };
+    // One order, one key: pressing twice, or again after a refresh, can't make two.
+    attempt.current = keyFor(JSON.stringify(order), attempt.current);
+    const input: CheckoutInput = { idempotencyKey: attempt.current.key, ...order };
 
     const found = validateCheckout(input, { needsAccess: load.needsAccess });
     setErrors(found);
@@ -152,6 +177,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
           if (saveThisSite && userId) await saveSite(input.site).catch(() => {});
           onPlaced();
           sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
+          sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY);
           clearCart();
           router.replace(`/orders/${result.number}?placed=1`);
         }
@@ -197,7 +223,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
           <dd>{formatPeso(total)}</dd>
         </div>
         <div>
-          <dt>Delivery to {draft.area}</dt>
+          <dt>Delivery to {area}</dt>
           <dd>{fee === 0 ? "Free" : formatPeso(fee)}</dd>
         </div>
         <div className="hm-co-total">
@@ -299,10 +325,10 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
               {(props) => (
                 <select
                   {...props}
-                  value={draft.area}
+                  value={area}
                   onChange={(e) => {
-                    set("area", e.target.value);
-                    setPreferredArea(e.target.value);
+                    setArea(e.target.value);
+                    setErrors((found) => ({ ...found, area: undefined }));
                   }}
                 >
                   {deliveryAreas.map((name) => (
@@ -325,7 +351,8 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
             />
           </details>
 
-          {load.needsAccess && (
+          {/* The server's word counts too: a cart that's out of date can look lighter here than it is. */}
+          {(load.needsAccess || errors.truckAccess) && (
             <fieldset className="hm-co-access" data-invalid={Boolean(errors.truckAccess)}>
               <legend>
                 This load needs {article(load.truck.name)} {load.truck.name}. Can it reach the gate?
@@ -368,13 +395,14 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
           </div>
           <div className="hm-windows" role="radiogroup" aria-label="Delivery window">
             {DELIVERY_WINDOWS.map((window) => (
-              <label key={window} data-selected={draft.deliveryWindow === window}>
-                <input type="radio" name="deliveryWindow" checked={draft.deliveryWindow === window} onChange={() => set("deliveryWindow", window)} />
+              <label key={window} data-selected={deliveryWindow === window} data-closed={!windows.includes(window)}>
+                <input type="radio" name="deliveryWindow" checked={deliveryWindow === window} disabled={!windows.includes(window)} onChange={() => set("deliveryWindow", window)} />
                 {window}
               </label>
             ))}
           </div>
           {errors.deliveryDate && <p className="hm-co-error">{errors.deliveryDate}</p>}
+          {errors.deliveryWindow && <p className="hm-co-error">{errors.deliveryWindow}</p>}
         </section>
 
         <section className="hm-co-step" aria-labelledby="hm-co-pay">

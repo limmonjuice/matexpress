@@ -7,13 +7,14 @@ import type { LineData } from "@/lib/catalog/types";
 import { createOrder, type CreateOrderResult, type PaymentProvider } from "./create-order";
 import { canSeeOrder } from "./proof";
 import { claimOrders, deleteSite, findOrder, insertSellerApplication, insertSite, itemsForOrder, ordersByNumbers, orderStore, sitesForUser } from "./repo";
-import { FIELD_LIMITS, normalizeMobile, SELLER_AWNINGS, validateSite, type CheckoutInput, type FieldErrors, type SiteFields } from "./rules";
+import { FIELD_LIMITS, isCheckoutInput, isId, isSiteFields, normalizeMobile, SELLER_AWNINGS, validateSite, type CheckoutInput, type FieldErrors, type SiteFields } from "./rules";
 import { currentUser, forgetOrderAccess, grantOrderAccess, provenOrders } from "./session";
 import { simulatedPayments } from "./simulated-payments";
 
 const payments: PaymentProvider = simulatedPayments;
 
 export async function placeOrder(input: CheckoutInput): Promise<CreateOrderResult> {
+  if (!isCheckoutInput(input)) return { kind: "changed", problems: [{ kind: "gone", slug: "" }] };
   const user = await currentUser();
   const result = await createOrder(input, {
     products: await listProducts(),
@@ -40,11 +41,14 @@ export async function lookupOrder(_: { error?: string } | undefined, form: FormD
   redirect(`/orders/${number}`);
 }
 
-/** After signing in or up: orders this browser can prove are theirs join the account. */
-export async function claimBrowserOrders() {
+/**
+ * Adds one order this browser can prove to the signed-in account, when the buyer asks.
+ * Never on signing in: on a shared computer, the last buyer's order isn't the next one's.
+ */
+export async function claimOrder(number: string) {
   const user = await currentUser();
-  if (!user) return;
-  await claimOrders(await provenOrders(), user.id);
+  if (!user || typeof number !== "string") return;
+  if ((await provenOrders()).includes(number)) await claimOrders([number], user.id);
 }
 
 export async function forgetBrowserOrders() {
@@ -53,6 +57,7 @@ export async function forgetBrowserOrders() {
 
 /** What's in an old order, as cart lines at today's prices, and what can no longer be bought. */
 export async function buyAgain(number: string): Promise<{ lines: (LineData & { quantity: number })[]; unavailable: string[] }> {
+  if (typeof number !== "string") return { lines: [], unavailable: [] };
   const user = await currentUser();
   const proven = await provenOrders();
   const [order] = await ordersByNumbers([number]);
@@ -81,6 +86,7 @@ export async function listMySites() {
 export async function saveSite(site: SiteFields): Promise<{ errors?: FieldErrors }> {
   const user = await currentUser();
   if (!user) return { errors: { contactName: "Sign in to save a site." } };
+  if (!isSiteFields(site)) return { errors: { contactName: "Enter a name for the driver to ask for." } };
   const errors = validateSite(site);
   if (Object.keys(errors).length) return { errors };
   await insertSite(user.id, { ...site, mobile: normalizeMobile(site.mobile)! });
@@ -89,7 +95,7 @@ export async function saveSite(site: SiteFields): Promise<{ errors?: FieldErrors
 
 export async function removeSite(id: string) {
   const user = await currentUser();
-  if (user) await deleteSite(user.id, id);
+  if (user && isId(id)) await deleteSite(user.id, id);
 }
 
 export async function applyToSell(_: { error?: string; done?: boolean } | undefined, form: FormData): Promise<{ error?: string; done?: boolean }> {

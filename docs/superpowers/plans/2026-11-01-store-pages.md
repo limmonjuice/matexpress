@@ -25,6 +25,16 @@ Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where
 - **Checkout, order and account components are fewer files** than listed: `checkout-form.tsx`, `order-view.tsx`, `order-bits.tsx`, `account-forms.tsx`.
 - **The old `products` table is untouched.** Task 10 was going to replace it.
 
+**Changed after the independent review:**
+- **The order is saved before any charge,** as `pending`, then the payment is recorded. A failed save never charges, and two requests with one key charge once. Task 14 builds on this order.
+- **The retry key lives in `sessionStorage` with a fingerprint of the order,** so a reply lost on a bad connection can't become a second order after a refresh, and a changed order is never answered with the old one.
+- **Orders join an account only when asked.** Signing in claims nothing. `claimOrder(number)` runs from the offer on the order page or "Add to my account" on `/account`, and `/track` can forget this browser's orders. Anyone holding an order's number and mobile can still claim an unowned order. Only checking the mobile by SMS closes that, and SMS is out of scope for now.
+- **Today's delivery windows close three hours before they end,** in `openWindows`, so the last one closes at the 2 PM cut-off.
+- **The checkout's area is the store's one area,** not a copy in the draft.
+- **Server Actions check what they're sent** with `isCheckoutInput` and `isSiteFields`, and `priceOrder` refuses a line listed twice.
+- **Tabs share one cart** through `storage` events, and a browser that blocks storage still works for the length of a page.
+- **Failures stay small:** each action shows its own message, and `error.tsx` in `(store)` and `(checkout)` catch the rest.
+
 **Added beyond the plan:**
 - **Shop by job,** at `/jobs/[slug]`: the materials for a job, with a drawing of it.
 - **Scale drawings** on the product page, generated from each size's real measurements.
@@ -34,7 +44,9 @@ Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where
 - **Signing out forgets the browser's orders and checkout draft,** for shared site-office computers.
 - **Saved sites fill checkout by themselves,** unless something has been typed already.
 
-**Checks:** `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm run check:links`, browser flows in a real browser, and the design inspector on each page type. Not checked: Safari, real iOS and Android touch, real payment.
+**Checks:** `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm run check:links`, browser flows in a real browser, the design inspector on each page type, and one independent review of the whole branch. Not checked: Safari, real iOS and Android touch, real payment.
+
+**Design inspector, what stays and why:** it judges landing pages, so `focal-point`, `few-pictures`, `still-page` and `no-footage` don't apply to a cart, a form or a help page. `palette-cream` is the brand. `eyebrow` fires on the header's "Track order" link and on the last small line before a heading, none of them real labels. `numbering` is the deal countdown, `icon-cards` the gallery's thumbnails, and `side-scroll` and `edge-text` the rows meant to swipe. `shadow` is a selected control's outline, or the hero's floating cards.
 
 ## Design brief
 

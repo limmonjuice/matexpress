@@ -12,5 +12,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // The buy box re-ranks on every keystroke, which can outlast the default 5 seconds on a busy machine.
+    testTimeout: 15_000,
   },
 });

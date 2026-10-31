@@ -15,8 +15,34 @@ export const TRUCK_ACCESS = [
   { id: "unsure", label: "Not sure, call me first" },
 ] as const;
 
+/** What to say when a call to the server fails outright. */
+export const CONNECTION_ERROR = "We couldn't reach the store. Check your connection and try again.";
+
+/** Better Auth's messages, in plain words. */
+export function friendlyAuthError(message?: string) {
+  if (!message) return "Something went wrong. Please try again.";
+  if (/invalid email or password/i.test(message)) return "That email and password don't match.";
+  if (/already exists/i.test(message)) return "There's already an account with that email. Try signing in.";
+  return message;
+}
+
+/** A path on this site, or nothing. "//evil.example" and "/\\evil.example" start with a slash too, so the browser's own parser decides. */
+export function localPath(next: unknown) {
+  if (typeof next !== "string" || !next.startsWith("/")) return undefined;
+  const here = "https://matexpress.invalid";
+  try {
+    const url = new URL(next, here);
+    return url.origin === here ? `${url.pathname}${url.search}${url.hash}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Where checkout keeps what's been typed, for this tab only. Never holds payment details. */
 export const CHECKOUT_DRAFT_KEY = "matexpress-checkout";
+
+/** The key of the order being placed, and what it was for. Holds what the draft holds, so it goes when the draft does. */
+export const CHECKOUT_ATTEMPT_KEY = "matexpress-checkout-attempt";
 
 /** The longest each typed field can be. The browser stops there, and the server refuses anything past it. */
 export const FIELD_LIMITS = { contactName: 80, street: 160, city: 120, notes: 500, storeName: 120, sells: 300 } as const;
@@ -60,6 +86,36 @@ export function normalizeMobile(raw: string) {
 }
 
 export const formatMobile = (mobile: string) => mobile.replace(/^\+63(\d{3})(\d{3})(\d{4})$/, "0$1 $2 $3");
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_LINES = 100;
+const text = (value: unknown): value is string => typeof value === "string" && value.length <= 1000;
+const optionalText = (value: unknown) => value === undefined || value === null || text(value);
+
+export const isId = (value: unknown): value is string => typeof value === "string" && UUID.test(value);
+
+/** Server Actions are public endpoints: what arrives is whatever someone chose to send, not what the form sends. */
+export function isSiteFields(raw: unknown): raw is SiteFields {
+  const site = raw as SiteFields | null;
+  return typeof raw === "object" && raw !== null && text(site?.contactName) && text(site?.mobile) && text(site?.street) && text(site?.city) && text(site?.area) && optionalText(site?.notes);
+}
+
+export function isCheckoutInput(raw: unknown): raw is CheckoutInput {
+  const input = raw as CheckoutInput | null;
+  return (
+    typeof raw === "object" &&
+    raw !== null &&
+    isId(input?.idempotencyKey) &&
+    isSiteFields(input?.site) &&
+    optionalText(input?.truckAccess) &&
+    text(input?.deliveryDate) &&
+    text(input?.deliveryWindow) &&
+    text(input?.paymentMethod) &&
+    Array.isArray(input?.lines) &&
+    input.lines.length <= MAX_LINES &&
+    input.lines.every((line) => text(line?.slug) && text(line?.variantId) && text(line?.sellerSlug) && typeof line?.quantity === "number" && typeof line?.unitPrice === "number")
+  );
+}
 
 export function validateSite(site: SiteFields): FieldErrors {
   const errors: FieldErrors = {};

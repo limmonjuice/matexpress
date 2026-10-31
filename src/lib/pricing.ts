@@ -58,9 +58,14 @@ export function rankOffers(offers: Offer[], quantity: number): RankedOffer[] {
     .sort((a, b) => Number(b.canFill) - Number(a.canFill) || a.total - b.total || a.offer.leadDays - b.offer.leadDays);
 }
 
-/** Fills a quantity no single seller holds, cheapest stock first. Undefined if every seller together falls short. */
-export function splitOrder(offers: Offer[], quantity: number): { offer: Offer; quantity: number }[] | undefined {
-  const inStock = offers.filter((o) => o.stock > 0);
+/**
+ * Fills a quantity no single seller holds, cheapest stock first. Every part is one a seller can
+ * really sell: at least the minimum, in whole steps. Undefined if no such split exists.
+ */
+export function splitOrder(offers: Offer[], quantity: number, rules: Pick<QuantityRules, "minQty" | "step"> = {}): { offer: Offer; quantity: number }[] | undefined {
+  const step = rules.step ?? 1;
+  const min = rules.minQty ?? step;
+  const inStock = offers.filter((o) => o.stock >= min);
   if (inStock.some((o) => o.stock >= quantity)) return undefined;
   if (inStock.reduce((sum, o) => sum + o.stock, 0) < quantity) return undefined;
 
@@ -69,9 +74,13 @@ export function splitOrder(offers: Offer[], quantity: number): { offer: Offer; q
   let left = quantity;
   for (const offer of byPrice) {
     if (left <= 0) break;
-    const take = Math.min(offer.stock, left);
+    let take = Math.min(offer.stock, left);
+    // Never leave the next seller less than they can sell.
+    if (left - take > 0 && left - take < min) take = left - min;
+    take = round2(Math.floor(round2(take / step)) * step);
+    if (take < min) continue;
     plan.push({ offer, quantity: take });
-    left -= take;
+    left = round2(left - take);
   }
-  return plan;
+  return left === 0 ? plan : undefined;
 }

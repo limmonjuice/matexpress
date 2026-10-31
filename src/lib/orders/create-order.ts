@@ -1,5 +1,5 @@
 import type { Product } from "@/lib/catalog/types";
-import { arrivalDate, bookableDays, dayKey } from "@/lib/delivery";
+import { arrivalDate, bookableDays, dayKey, openWindows } from "@/lib/delivery";
 import { loadFor } from "@/lib/load";
 import { priceOrder, type OrderProblem, type PricedLine } from "./price-order";
 import { normalizeMobile, validateCheckout, type CheckoutInput, type FieldErrors } from "./rules";
@@ -13,6 +13,8 @@ export function newOrderNumber() {
   const bytes = crypto.getRandomValues(new Uint8Array(8));
   return `MX-${Array.from(bytes, (b) => ORDER_ALPHABET[b % ORDER_ALPHABET.length]).join("")}`;
 }
+
+export type PaymentStatus = "paid" | "pending";
 
 export type NewOrder = {
   id: string;
@@ -31,7 +33,7 @@ export type NewOrder = {
   deliveryFeeCentavos: number;
   totalCentavos: number;
   paymentMethod: string;
-  paymentStatus: "paid" | "pending";
+  paymentStatus: PaymentStatus;
   paymentRef?: string;
   idempotencyKey: string;
   lines: PricedLine[];
@@ -41,10 +43,11 @@ export type OrderStore = {
   findNumberByKey: (key: string) => Promise<string | undefined>;
   /** Throws if the idempotency key is already taken. */
   insert: (order: NewOrder) => Promise<void>;
+  recordPayment: (number: string, payment: { status: PaymentStatus; ref?: string }) => Promise<void>;
 };
 
 export type PaymentProvider = {
-  start: (order: { number: string; totalCentavos: number; method: string }) => Promise<{ status: "paid" | "pending"; ref?: string }>;
+  start: (order: { number: string; totalCentavos: number; method: string }) => Promise<{ status: PaymentStatus; ref?: string }>;
 };
 
 export type CreateOrderResult =
@@ -68,18 +71,20 @@ export async function createOrder(input: CheckoutInput, { products, store, payme
   const priced = priceOrder(input.lines, products, input.site.area);
   if (!priced.ok) return { kind: "changed", problems: priced.problems };
 
-  const errors = validateCheckout(input, { needsAccess: loadFor(priced.weightKg).needsAccess });
+  const { needsAccess } = loadFor(priced.weightKg);
+  const errors = validateCheckout(input, { needsAccess });
   const slowest = Math.max(...priced.lines.map((l) => l.leadDays));
   if (!errors.deliveryDate) {
     const days = bookableDays(arrivalDate(now, slowest, input.site.area)).map(dayKey);
     if (input.deliveryDate < days[0]) errors.deliveryDate = "That day is too soon for these sellers. Pick a later one.";
     else if (!days.includes(input.deliveryDate)) errors.deliveryDate = "We can only book the days shown. Pick one of them.";
+    else if (!errors.deliveryWindow && !openWindows(input.deliveryDate, now).includes(input.deliveryWindow)) errors.deliveryWindow = "That window is too soon for today. Pick a later one.";
   }
   if (Object.keys(errors).length) return { kind: "invalid", errors };
 
   const number = newOrderNumber();
-  const payment = await payments.start({ number, totalCentavos: priced.totalCentavos, method: input.paymentMethod });
 
+  // Saved before any charge: the unique key lets one request through, and no one pays for an order that doesn't exist.
   try {
     await store.insert({
       id: crypto.randomUUID(),
@@ -91,15 +96,14 @@ export async function createOrder(input: CheckoutInput, { products, store, payme
       city: input.site.city.trim(),
       area: input.site.area,
       ...(input.site.notes?.trim() ? { notes: input.site.notes.trim() } : {}),
-      ...(input.truckAccess ? { truckAccess: input.truckAccess } : {}),
+      ...(needsAccess ? { truckAccess: input.truckAccess } : {}),
       deliveryDate: input.deliveryDate,
       deliveryWindow: input.deliveryWindow,
       subtotalCentavos: priced.subtotalCentavos,
       deliveryFeeCentavos: priced.deliveryFeeCentavos,
       totalCentavos: priced.totalCentavos,
       paymentMethod: input.paymentMethod,
-      paymentStatus: payment.status,
-      ...(payment.ref ? { paymentRef: payment.ref } : {}),
+      paymentStatus: "pending",
       idempotencyKey: input.idempotencyKey,
       lines: priced.lines,
     });
@@ -108,6 +112,13 @@ export async function createOrder(input: CheckoutInput, { products, store, payme
     const raced = await store.findNumberByKey(input.idempotencyKey);
     if (raced) return { kind: "placed", number: raced, alreadyPlaced: true };
     throw error;
+  }
+
+  // The order stands either way. If the charge fails it shows as unpaid, and a retry finds it instead of charging again.
+  try {
+    await store.recordPayment(number, await payments.start({ number, totalCentavos: priced.totalCentavos, method: input.paymentMethod }));
+  } catch (error) {
+    console.error(`Payment failed for ${number}`, error);
   }
 
   return { kind: "placed", number };

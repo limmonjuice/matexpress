@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DeliveryChecker } from "@/components/info/delivery-checker";
 import { HELP_NAV, InfoPage } from "@/components/info/info-page";
-import { areaFee, CUTOFF_HOUR, deliveryAreas, DELIVERY_WINDOWS, FREE_DELIVERY_OVER } from "@/lib/delivery";
+import { areaFee, CUTOFF_HOUR, deliveryAreas, DELIVERY_WINDOWS, FREE_DELIVERY_OVER, WINDOW_NOTICE_HOURS } from "@/lib/delivery";
 import { formatPeso } from "@/lib/format";
 import { TRUCKS, formatWeight } from "@/lib/load";
 
@@ -52,7 +52,9 @@ export default function DeliveryHelp() {
           <li>Orders placed before {CUTOFF_HOUR - 12} PM count as today&apos;s. After that, they count as tomorrow&apos;s.</li>
           <li>Every product shows its date for your area, before you add it to the cart.</li>
           <li>Everything comes together, so the seller who needs longest sets the day. The cart tells you who that is, so you can switch.</li>
-          <li>Pick your day at checkout, and a window: {DELIVERY_WINDOWS.join(" or ")}.</li>
+          <li>
+            Pick your day at checkout, and a window: {DELIVERY_WINDOWS.join(" or ")}. For today, a window closes {WINDOW_NOTICE_HOURS} hours before it ends.
+          </li>
         </ul>
 
         <h2>Which truck comes</h2>

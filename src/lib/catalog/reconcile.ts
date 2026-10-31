@@ -1,5 +1,5 @@
 import type { LineData, Offer, Product } from "./types";
-import { priceForQuantity } from "@/lib/pricing";
+import { clampQuantity, priceForQuantity } from "@/lib/pricing";
 import { toLine } from "./card";
 
 type Line = LineData & { quantity: number };
@@ -11,7 +11,7 @@ export type CartNotice =
 
 /**
  * A cart can sit in a browser for weeks. This checks every line against the
- * catalog as it is now, updates what changed, and says what it changed.
+ * catalog as it is now, updates what changed, and says what the buyer would notice.
  * A line that can no longer be bought stays visible until the buyer removes it.
  */
 export function reconcileCart(lines: Line[], products: Product[]): { lines: Line[]; notices: CartNotice[] } {
@@ -22,19 +22,22 @@ export function reconcileCart(lines: Line[], products: Product[]): { lines: Line
     const product = bySlug.get(line.slug);
     const variant = product?.variants.find((v) => v.id === line.variantId);
     const offer = variant?.offers.find((o) => o.sellerSlug === line.sellerSlug);
-    if (!product || !variant || !offer || offer.stock <= 0) {
+    // A seller holding less than their own minimum can't fill any order.
+    if (!product || !variant || !offer || offer.stock < (variant.minQty ?? variant.step ?? 1)) {
       notices.push({ lineId: line.id, kind: "gone", name: line.name });
       return { ...line, stock: 0 };
     }
 
     const fresh = toLine(product, variant, offer);
-    if (fresh.price !== line.price) {
-      notices.push({ lineId: line.id, kind: "price", name: line.name, was: line.price, now: fresh.price });
-    }
-    let quantity = line.quantity;
-    if (quantity > offer.stock) {
-      quantity = offer.stock;
+    const quantity = clampQuantity(line.quantity, { minQty: variant.minQty, step: variant.step, stock: offer.stock }).quantity;
+    if (line.quantity > offer.stock) {
       notices.push({ lineId: line.id, kind: "stock", name: line.name, left: offer.stock });
+    }
+    // What this line costs each, at its own quantity: a change to a volume price counts as much as one to the list price.
+    const was = priceForQuantity(line, line.quantity);
+    const now = priceForQuantity(fresh, quantity);
+    if (was !== now) {
+      notices.push({ lineId: line.id, kind: "price", name: line.name, was, now });
     }
     return { ...fresh, quantity };
   });

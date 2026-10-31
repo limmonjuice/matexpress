@@ -25,6 +25,33 @@ describe("reconcileCart", () => {
     expect(result.notices[0]).toMatchObject({ kind: "stock", left: 900 });
   });
 
+  test("a change to a volume price is noticed, at the price this line was really paying", () => {
+    const stale = line(100, { tiers: [{ from: 100, price: 230 }, { from: 500, price: 219 }] });
+    const result = reconcileCart([stale], products);
+    expect(result.notices).toEqual([{ lineId: stale.id, kind: "price", name: "Deformed Rebar", was: 230, now: 225 }]);
+    expect(result.lines[0].tiers).toEqual(toCard(rebar).line.tiers);
+  });
+
+  test("a change only to the list price says nothing to a line on a volume price", () => {
+    expect(reconcileCart([line(100, { price: 240 })], products).notices).toEqual([]);
+  });
+
+  test("stock, lead time and weight refresh even when there's nothing to say", () => {
+    const result = reconcileCart([line(10, { stock: 1, leadDays: 9, weightKg: 1 })], products);
+    expect(result.notices).toEqual([]);
+    expect(result.lines[0]).toMatchObject({ stock: 900, leadDays: 0, weightKg: 5.33 });
+  });
+
+  test("a seller now holding less than their minimum can't fill it, rather than bouncing between the two", () => {
+    const blocks = productBySlug("hollow-block")!;
+    const variant = blocks.variants[0];
+    const low = { ...blocks, variants: blocks.variants.map((v) => (v === variant ? { ...v, offers: v.offers.map((o) => ({ ...o, stock: 10 })) } : v)) };
+    const cartLine = { ...toCard(blocks).line, quantity: 50 };
+    const result = reconcileCart([cartLine], [low]);
+    expect(result.notices).toMatchObject([{ kind: "gone" }]);
+    expect(result.lines[0].stock).toBe(0);
+  });
+
   test("a gone offer is flagged and kept visible", () => {
     const result = reconcileCart([line(10, { sellerSlug: "nobody", id: "x" })], products);
     expect(result.notices[0]).toMatchObject({ kind: "gone", lineId: "x" });

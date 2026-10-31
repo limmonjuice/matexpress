@@ -810,7 +810,7 @@
   font-weight: 700;
 }
 .hm-review > p {
-  max-width: 68ch;
+  max-width: 40rem;
   margin-top: 4px;
   line-height: 1.5;
 }

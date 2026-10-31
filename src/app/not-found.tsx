@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function NotFound() {
   return (
     <StoreShell>
-      <section className="hm-frame hm-notfound">
+      <section className="hm-frame hm-notfound hm-arrive">
         <svg className="hm-barricade" viewBox="0 0 320 150" aria-hidden="true">
           <g className="hm-barricade-legs">
             <path d="M58 150 74 30M262 150 246 30" />

@@ -15,6 +15,15 @@ describe("parseListingParams", () => {
     expect(parsed.extra).toEqual({ q: "bakal" });
   });
 
+  test("a sort or filter named after something every object has is ignored", () => {
+    for (const sort of ["__proto__", "constructor", "toString"]) {
+      expect(params({ sort }).sort).toBe("best");
+      expect(() => queryProducts(products, steel, params({ sort }))).not.toThrow();
+    }
+    expect(() => queryProducts(products, steel, params({ constructor: "x", toString: "y" }))).not.toThrow();
+    expect(() => queryProducts(products, steel, parseListingParams(JSON.parse('{"__proto__":"x"}')))).not.toThrow();
+  });
+
   test("bad sort and show fall back", () => {
     const parsed = params({ sort: "nonsense", show: "abc" });
     expect(parsed.sort).toBe("best");

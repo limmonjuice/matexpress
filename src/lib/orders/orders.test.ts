@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { products } from "@/lib/catalog/data/products";
 import { createOrder, newOrderNumber, type NewOrder, type OrderStore } from "./create-order";
+import { lineTotal } from "@/lib/pricing";
 import { priceOrder, toCentavos } from "./price-order";
 import { formatMobile, normalizeMobile, validateCheckout, validateSite, type CheckoutInput } from "./rules";
 
@@ -33,6 +34,11 @@ function fakeStore(): OrderStore & { saved: NewOrder[] } {
     insert: async (order) => {
       if (saved.some((o) => o.idempotencyKey === order.idempotencyKey)) throw new Error("duplicate key");
       saved.push(order);
+    },
+    recordPayment: async (number, { status, ref }) => {
+      const order = saved.find((o) => o.number === number)!;
+      order.paymentStatus = status;
+      order.paymentRef = ref;
     },
   };
 }
@@ -150,6 +156,25 @@ describe("priceOrder", () => {
     expect(priceOrder([line({ sellerSlug: "nobody" })], products, "Rizal")).toMatchObject({ ok: false, problems: [{ kind: "gone" }] });
   });
 
+  test("the same line twice can't spend one seller's stock twice", () => {
+    const twice = [line({ quantity: 640, unitPrice: 240 }), line({ quantity: 640, unitPrice: 240 })];
+    expect(priceOrder(twice, products, "Rizal")).toMatchObject({ ok: false, problems: [{ kind: "quantity", note: "It's in the order twice." }] });
+  });
+
+  test("a seller holding less than their minimum is gone, not a quantity to argue over", () => {
+    const low = products.map((p) => (p.slug === "hollow-block" ? { ...p, variants: p.variants.map((v) => ({ ...v, offers: v.offers.map((o) => ({ ...o, stock: 10 })) })) } : p));
+    const blocks = line({ slug: "hollow-block", variantId: "4-in", sellerSlug: "bato-aggregates", quantity: 50, unitPrice: 15 });
+    expect(priceOrder([blocks], low, "Rizal")).toMatchObject({ ok: false, problems: [{ kind: "gone" }] });
+  });
+
+  test("a line's total is the sum the cart showed, to the centavo", () => {
+    const odd = products.map((p) => (p.slug === "washed-sand" ? { ...p, variants: p.variants.map((v) => ({ ...v, offers: v.offers.map((o) => ({ ...o, price: 1000.05, tiers: undefined })) })) } : p));
+    const sand = line({ slug: "washed-sand", variantId: "fine", sellerSlug: "bato-aggregates", quantity: 1.5, unitPrice: 1000.05 });
+    const priced = priceOrder([sand], odd, "Rizal");
+    expect(priced).toMatchObject({ ok: true });
+    if (priced.ok) expect(priced.lines[0].lineTotalCentavos).toBe(toCentavos(lineTotal(1000.05, 1.5)));
+  });
+
   test("an empty order is refused", () => {
     expect(priceOrder([], products, "Rizal").ok).toBe(false);
   });
@@ -182,6 +207,7 @@ describe("createOrder", () => {
       // The first look finds nothing, as if the other request hadn't saved yet.
       findNumberByKey: vi.fn<OrderStore["findNumberByKey"]>().mockResolvedValueOnce(undefined).mockImplementation(store.findNumberByKey),
       insert: store.insert,
+      recordPayment: store.recordPayment,
     };
     const result = await createOrder(input(), { products, store: racing, payments, now });
     expect(result).toMatchObject({ kind: "placed", alreadyPlaced: true });
@@ -189,8 +215,67 @@ describe("createOrder", () => {
   });
 
   test("a store failure that isn't a duplicate isn't hidden", async () => {
-    const broken: OrderStore = { findNumberByKey: async () => undefined, insert: async () => Promise.reject(new Error("database down")) };
+    const broken: OrderStore = { findNumberByKey: async () => undefined, insert: async () => Promise.reject(new Error("database down")), recordPayment: async () => {} };
     await expect(createOrder(input(), { products, store: broken, payments, now })).rejects.toThrow("database down");
+  });
+
+  test("an order that can't be saved is never charged", async () => {
+    payments.start.mockClear();
+    const broken: OrderStore = { findNumberByKey: async () => undefined, insert: async () => Promise.reject(new Error("database down")), recordPayment: async () => {} };
+    await expect(createOrder(input(), { products, store: broken, payments, now })).rejects.toThrow();
+    expect(payments.start).not.toHaveBeenCalled();
+  });
+
+  test("the order is saved before the charge starts", async () => {
+    const store = fakeStore();
+    const start = vi.fn(async () => {
+      expect(store.saved).toHaveLength(1);
+      expect(store.saved[0].paymentStatus).toBe("pending");
+      return { status: "paid" as const, ref: "SIM-2" };
+    });
+    await createOrder(input(), { products, store, payments: { start }, now });
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(store.saved[0]).toMatchObject({ paymentStatus: "paid", paymentRef: "SIM-2" });
+  });
+
+  test("two requests with one key charge once", async () => {
+    payments.start.mockClear();
+    const store = fakeStore();
+    await Promise.all([run(input(), store), run(input(), store)]);
+    expect(store.saved).toHaveLength(1);
+    expect(payments.start).toHaveBeenCalledTimes(1);
+  });
+
+  test("a failed charge leaves an unpaid order, and a retry finds it without charging again", async () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const store = fakeStore();
+    const start = vi.fn(async () => Promise.reject<{ status: "paid" }>(new Error("gateway down")));
+    const first = await createOrder(input(), { products, store, payments: { start }, now });
+    expect(first.kind).toBe("placed");
+    expect(store.saved[0].paymentStatus).toBe("pending");
+
+    const second = await createOrder(input(), { products, store, payments: { start }, now });
+    expect(second).toMatchObject({ kind: "placed", alreadyPlaced: true });
+    expect(start).toHaveBeenCalledTimes(1);
+    quiet.mockRestore();
+  });
+
+  test("a window today that's too soon is refused, and a later one isn't", async () => {
+    const lunchtime = new Date("2026-11-02T13:30:00+08:00");
+    const today = { deliveryDate: "2026-11-02" };
+    const cement = [line({ quantity: 2 })];
+    const tooSoon = await createOrder(input({ ...today, lines: cement, deliveryWindow: "8 AM to 12 NN" }), { products, store: fakeStore(), payments, now: lunchtime });
+    expect(tooSoon.kind).toBe("invalid");
+    if (tooSoon.kind === "invalid") expect(tooSoon.errors.deliveryWindow).toMatch(/too soon/);
+
+    const later = await createOrder(input({ ...today, lines: cement, deliveryWindow: "1 PM to 5 PM" }), { products, store: fakeStore(), payments, now: lunchtime });
+    expect(later.kind).toBe("placed");
+  });
+
+  test("a truck answer on a small load isn't stored", async () => {
+    const store = fakeStore();
+    await run(input({ truckAccess: "wide" }), store);
+    expect(store.saved[0].truckAccess).toBeUndefined();
   });
 
   test("a changed price stops the order before any payment", async () => {

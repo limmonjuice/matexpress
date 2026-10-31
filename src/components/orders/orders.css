@@ -471,6 +471,12 @@
   font-weight: 700;
   letter-spacing: -0.02em;
 }
+.hm-unclaimed {
+  margin-top: 20px;
+}
+.hm-forget {
+  margin-top: 10px;
+}
 .hm-account-empty {
   margin-top: 8px;
   padding: 20px;

@@ -286,6 +286,10 @@
   outline: 3px solid var(--hm-ink);
   outline-offset: 2px;
 }
+.hm-windows label[data-closed="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .hm-windows {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -604,5 +608,12 @@
   }
   .hm-pay {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  /* The lock says it. The wordmark and the way back need the width. */
+  .hm-co-secure span {
+    display: none;
   }
 }

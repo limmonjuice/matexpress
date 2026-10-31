@@ -11,6 +11,7 @@ import type { LoadedOrder } from "@/lib/orders/repo";
 import { PAYMENT_METHODS, TRUCK_ACCESS, formatMobile } from "@/lib/orders/rules";
 import { demoEvents, demoTimelineOn, STAGES, trackingView, type EventType } from "@/lib/orders/tracking";
 import type { CartLine } from "@/stores/cart-store";
+import { ClaimOrderButton } from "@/components/account/account-forms";
 import { BuyAgainButton, CopyNumber, CreateAccountOffer, LiveRefresh } from "./order-bits";
 import "./orders.css";
 
@@ -202,12 +203,13 @@ export async function OrderView({ found, justPlaced, signedIn }: { found: Loaded
           <section className="hm-order-card" aria-labelledby="hm-order-payment">
             <h2 id="hm-order-payment">Payment</h2>
             <p>
-              {payment}, {order.paymentRef?.startsWith("TEST-") ? "test payment, no money moved" : order.paymentStatus}
+              {payment}, {order.paymentRef?.startsWith("TEST-") ? "test payment, no money moved" : order.paymentStatus === "paid" ? "paid" : "not paid yet"}
             </p>
             <p className="hm-order-note">One payment covers {plural(sellers.length, "seller")}. MatExpress pays them once you&apos;ve received your order.</p>
           </section>
 
-          {!signedIn && !order.userId && <CreateAccountOffer name={order.contactName} />}
+          {!signedIn && !order.userId && <CreateAccountOffer name={order.contactName} number={order.number} />}
+          {signedIn && !order.userId && <ClaimOrderButton number={order.number} />}
 
           <p className="hm-order-help">
             Something wrong? <Link href="/help/contact">Contact us</Link> with your order number. Damaged goods are <Link href="/help/returns">replaced free</Link>.

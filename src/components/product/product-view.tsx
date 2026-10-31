@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LoadTruck } from "@/components/cart/load-truck";
@@ -14,7 +14,7 @@ import type { Product, Variant } from "@/lib/catalog/types";
 import { deliveryAreas, deliveryFee, FREE_DELIVERY_OVER } from "@/lib/delivery";
 import { discountPercent, formatPeso, plural } from "@/lib/format";
 import { formatWeight, loadFor } from "@/lib/load";
-import { rankOffers, splitOrder, unitPriceLabel } from "@/lib/pricing";
+import { clampQuantity, rankOffers, splitOrder, unitPriceLabel } from "@/lib/pricing";
 import { useCartStore, type CartLine } from "@/stores/cart-store";
 import { usePreferences } from "@/stores/preferences-store";
 import { Gallery } from "./gallery";
@@ -23,10 +23,10 @@ import { OfferList } from "./offer-list";
 const startQuantity = (variant: Variant) => variant.minQty ?? variant.step ?? 1;
 
 /** Reads ?size= apart from the rest, so the whole buy box can still be prerendered. */
-function SizeFromUrl({ onSize }: { onSize: (id: string) => void }) {
+function SizeFromUrl({ onSize }: { onSize: (size: string | null) => void }) {
   const size = useSearchParams().get("size");
   useEffect(() => {
-    if (size) onSize(size);
+    onSize(size);
   }, [size, onSize]);
   return null;
 }
@@ -52,7 +52,7 @@ export function ProductView({ product, specsFor, children }: { product: Product;
   const pickedRow = ranked.find((r) => r.offer.sellerSlug === picked && r.canFill);
   const chosen = pickedRow ?? ranked.find((r) => r.canFill);
   const cheapest = ranked.find((r) => r.canFill);
-  const split = chosen ? undefined : splitOrder(variant.offers, live);
+  const split = chosen ? undefined : splitOrder(variant.offers, live, variant);
   const allOut = variant.offers.every((o) => o.stock <= 0);
 
   const items = chosen?.total ?? 0;
@@ -80,14 +80,26 @@ export function ProductView({ product, specsFor, children }: { product: Product;
       window.history.replaceState(null, "", url);
     }
   };
-  const fromUrl = useRef((id: string) => selectSize(id, false));
+  const applyUrlSize = (size: string | null) => {
+    const id = size ?? defaultVariant(product).id;
+    // The address catching up with a size just picked here isn't a new choice.
+    if (id !== variantId) selectSize(id, false);
+  };
+  const fromUrl = useRef(applyUrlSize);
   useEffect(() => {
-    fromUrl.current = (id: string) => selectSize(id, false);
+    fromUrl.current = applyUrlSize;
   });
+  // One function for the page's life, so ?size= is read when the address changes and not on every render.
+  const sizeFromUrl = useCallback((size: string | null) => fromUrl.current(size), []);
 
   const addToCart = () => {
-    if (!line) return;
-    add(line, live);
+    if (!line || !chosen) return;
+    // A phone can press the button while the field still holds what was typed.
+    const settled = clampQuantity(live, { minQty: variant.minQty, step: variant.step, stock: chosen.offer.stock });
+    setTyping(null);
+    setQuantity(settled.quantity);
+    setNote(settled.note);
+    add(line, settled.quantity);
     openCart();
   };
 
@@ -113,7 +125,7 @@ export function ProductView({ product, specsFor, children }: { product: Product;
   return (
     <>
       <Suspense fallback={null}>
-        <SizeFromUrl onSize={(id) => fromUrl.current(id)} />
+        <SizeFromUrl onSize={sizeFromUrl} />
       </Suspense>
 
       {/* Its own grid: the sticky gallery stops where the buy box does, not over what's below. */}

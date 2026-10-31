@@ -1,8 +1,16 @@
 import { describe, expect, test } from "vitest";
-import { arrivalDate, arrivalText, bookableDays, dayKey, deliveryFee, formatDay, orderArrival } from "./delivery";
+import { areaFee, arrivalDate, arrivalText, bookableDays, dayKey, deliveryFee, formatDay, openWindows, orderArrival } from "./delivery";
 
 const beforeCutoff = new Date("2026-11-02T13:59:00+08:00");
 const atCutoff = new Date("2026-11-02T14:00:00+08:00");
+
+describe("an area named after something every object has", () => {
+  test("costs the far-area fee and no extra days, rather than breaking the sums", () => {
+    expect(areaFee("constructor")).toBe(1000);
+    expect(deliveryFee("__proto__", 100)).toBe(1000);
+    expect(Number.isNaN(arrivalDate(new Date("2026-11-02T09:00:00+08:00"), 1, "constructor").getTime())).toBe(false);
+  });
+});
 
 describe("arrivalDate", () => {
   test("an order before 2 PM Manila time can arrive the same day", () => {
@@ -60,6 +68,33 @@ describe("orderArrival", () => {
 
   test("an empty cart has no arrival", () => {
     expect(orderArrival([], beforeCutoff, "Rizal")).toBeUndefined();
+  });
+});
+
+describe("openWindows", () => {
+  const at = (time: string) => new Date(`2026-11-02T${time}:00+08:00`);
+
+  test("today's windows close three hours before they end", () => {
+    expect(openWindows("2026-11-02", at("08:59"))).toEqual(["8 AM to 12 NN", "1 PM to 5 PM"]);
+    expect(openWindows("2026-11-02", at("09:00"))).toEqual(["1 PM to 5 PM"]);
+    expect(openWindows("2026-11-02", at("13:59"))).toEqual(["1 PM to 5 PM"]);
+  });
+
+  test("any day today can still be booked has a window left", () => {
+    // The last window closes exactly when today stops being bookable.
+    expect(dayKey(arrivalDate(at("13:59"), 0, "Rizal"))).toBe("2026-11-02");
+    expect(openWindows("2026-11-02", at("13:59"))).not.toEqual([]);
+    expect(dayKey(arrivalDate(at("14:00"), 0, "Rizal"))).toBe("2026-11-03");
+    expect(openWindows("2026-11-02", at("14:00"))).toEqual([]);
+  });
+
+  test("a later day has them all, whatever the time", () => {
+    expect(openWindows("2026-11-03", at("16:00"))).toEqual(["8 AM to 12 NN", "1 PM to 5 PM"]);
+  });
+
+  test("it's Manila's clock, not the server's", () => {
+    // 1:30 AM in UTC is 9:30 AM in Manila, on the same date.
+    expect(openWindows("2026-11-02", new Date("2026-11-02T01:30:00Z"))).toEqual(["1 PM to 5 PM"]);
   });
 });
 
