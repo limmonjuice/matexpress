@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CHAPTERS, CHAPTER, UNITS } from "../journey/rig";
 import { StoryDirector } from "./story-director";
 import "./story.css";
@@ -34,9 +35,9 @@ export function Story() {
       <div className="story-backdrop" aria-hidden="true" />
       <div className="story-sticky" data-tone="light">
         <header className="story-bar">
-          <a href="#top" className="story-mark">
+          <Link href="/" className="story-mark">
             MatExpress
-          </a>
+          </Link>
           <nav aria-label="Chapters">
             <ol className="story-rail">
               {CHAPTERS.map((c) => (
@@ -49,9 +50,9 @@ export function Story() {
               <i />
             </div>
           </nav>
-          <a href="#get-started" className="story-start">
-            Get started <Arrow />
-          </a>
+          <Link href="/" className="story-start">
+            Shop materials <Arrow />
+          </Link>
         </header>
 
         <div className="story-chapters">
@@ -85,21 +86,21 @@ export function Story() {
               Hardware stores, lumberyards and steel suppliers list their stock on MatExpress and
               reach the contractors and architects building around them.
             </p>
-            <a href="#get-started" className="story-link">
+            <Link href="/sell" className="story-link">
               Become a seller <Arrow />
-            </a>
+            </Link>
           </article>
 
           <article className="story-chapter story-chapter--left">
             <h2>Ready to build?</h2>
             <p>Create a free account, add your project site and order your first materials today.</p>
             <div className="story-actions">
-              <a href="#get-started" className="story-button">
-                Get started <Arrow />
-              </a>
-              <a href="#sell" className="story-link">
+              <Link href="/" className="story-button">
+                Start shopping <Arrow />
+              </Link>
+              <Link href="/sell" className="story-link">
                 Sell on MatExpress <Arrow />
-              </a>
+              </Link>
             </div>
           </article>
         </div>
@@ -116,7 +117,7 @@ export function StoryFooter() {
       <nav aria-label="Footer">
         <a href="#how-it-works">How it works</a>
         <a href="#for-your-project">For your project</a>
-        <a href="#sell">Sell on MatExpress</a>
+        <Link href="/sell">Sell on MatExpress</Link>
       </nav>
       <span>© 2026 MatExpress</span>
     </footer>

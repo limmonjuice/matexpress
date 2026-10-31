@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import yard from "@/assets/hero-yard-plate.webp";
 import "./hero.css";
 
@@ -26,16 +27,16 @@ export function Hero() {
       </div>
 
       <header className="hx-nav">
-        <a href="#top" className="hx-wordmark">
+        <Link href="/" className="hx-wordmark">
           MatExpress
-        </a>
+        </Link>
         <nav className="hx-links" aria-label="Primary">
           <a href="#how-it-works">How it works</a>
           <a href="#for-your-project">For your project</a>
         </nav>
-        <a href="#get-started" className="hx-start">
-          Get started <Arrow />
-        </a>
+        <Link href="/" className="hx-start">
+          Shop materials <Arrow />
+        </Link>
       </header>
 
       <div className="hx-content">

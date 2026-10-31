@@ -8,9 +8,9 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "MatExpress — Construction materials, delivered to site",
+  title: "MatExpress: Construction materials from trusted suppliers, delivered to site",
   description:
-    "Order cement, steel, aggregates and lumber at yard prices, and track every delivery to your gate.",
+    "Compare cement, steel, sand and lumber from verified hardware stores, check out once, and track every delivery to your site.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

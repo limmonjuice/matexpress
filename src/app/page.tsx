@@ -1,18 +1,22 @@
-import { Hero } from "@/components/hero/hero";
-import { Story, StoryFooter } from "@/components/story/story";
-import { SmoothScroll } from "@/components/journey/smooth-scroll";
-import { TruckStage } from "@/components/journey/truck-stage";
+import { CategoryGrid } from "@/components/home/category-grid";
+import { Hero } from "@/components/home/hero";
+import { HomeMotion } from "@/components/home/home-motion";
+import { ProductSections } from "@/components/home/product-sections";
+import { PromoPanels } from "@/components/home/promo-panels";
+import { ServiceStrip } from "@/components/home/service-strip";
+import { StoreShell } from "@/components/home/store-shell";
+import { TrustStrip } from "@/components/home/trust-strip";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <>
-      <SmoothScroll />
-      <main>
-        <Hero />
-        <Story />
-      </main>
-      <StoryFooter />
-      <TruckStage />
-    </>
+    <StoreShell>
+      <Hero />
+      <ServiceStrip />
+      <CategoryGrid />
+      <ProductSections />
+      <PromoPanels />
+      <TrustStrip />
+      <HomeMotion />
+    </StoreShell>
   );
 }

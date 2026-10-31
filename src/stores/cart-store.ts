@@ -7,6 +7,8 @@ export type CartLine = {
   unit: string;
   price: number;
   quantity: number;
+  image?: string;
+  seller?: string;
 };
 
 type CartState = {
@@ -15,21 +17,12 @@ type CartState = {
   /** Bumped on every add so the cart button can play its pop animation. */
   lastAddedAt: number;
   add: (line: Omit<CartLine, "quantity">, quantity?: number) => void;
-  addMany: (lines: CartLine[]) => void;
   setQuantity: (id: string, quantity: number) => void;
   remove: (id: string) => void;
   clear: () => void;
   open: () => void;
   close: () => void;
 };
-
-function merge(lines: CartLine[], incoming: CartLine): CartLine[] {
-  const existing = lines.find((l) => l.id === incoming.id);
-  if (!existing) return [...lines, incoming];
-  return lines.map((l) =>
-    l.id === incoming.id ? { ...l, quantity: l.quantity + incoming.quantity } : l,
-  );
-}
 
 export const useCartStore = create<CartState>()(
   persist(
@@ -38,15 +31,15 @@ export const useCartStore = create<CartState>()(
       isOpen: false,
       lastAddedAt: 0,
       add: (line, quantity = 1) =>
-        set((state) => ({
-          lines: merge(state.lines, { ...line, quantity }),
-          lastAddedAt: Date.now(),
-        })),
-      addMany: (incoming) =>
-        set((state) => ({
-          lines: incoming.reduce(merge, state.lines),
-          lastAddedAt: Date.now(),
-        })),
+        set((state) => {
+          const existing = state.lines.find((l) => l.id === line.id);
+          return {
+            lastAddedAt: Date.now(),
+            lines: existing
+              ? state.lines.map((l) => (l.id === line.id ? { ...l, quantity: l.quantity + quantity } : l))
+              : [...state.lines, { ...line, quantity }],
+          };
+        }),
       setQuantity: (id, quantity) =>
         set((state) => ({
           lines:
@@ -61,6 +54,9 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "matexpress-cart",
+      // Carts saved by the old landing page hold item IDs and prices that no longer exist.
+      version: 1,
+      migrate: () => ({ lines: [] }),
       // Rehydrated on the client after mount to avoid a server/client mismatch.
       skipHydration: true,
       partialize: (state) => ({ lines: state.lines }),

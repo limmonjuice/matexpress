@@ -593,7 +593,8 @@ function Precompile() {
 
 export default function JourneyScene() {
   return (
-    <Canvas shadows="percentage" dpr={[1, 1.75]} gl={{ antialias: true, alpha: true }}>
+    // The canvas covers the whole page, so it must let clicks through to the links beneath it.
+    <Canvas shadows="percentage" dpr={[1, 1.75]} gl={{ antialias: true, alpha: true }} style={{ pointerEvents: "none" }}>
       <CameraRig />
       <Lighting />
       <TruckActor />
