@@ -853,7 +853,7 @@
     padding: 0 20px;
     border-radius: 999px;
     background: var(--hm-ink);
-    box-shadow: 0 14px 34px rgb(18 25 37 / 0.28); /* taste-skill-ignore: a floating bar over the page */
+    outline: 1px solid rgb(255 255 255 / 0.18); /* Keeps its edge over the dark footer. */
     color: #fff;
     font-size: 0.9375rem;
     font-weight: 600;
@@ -903,7 +903,7 @@
     font-size: clamp(1.75rem, 8vw, 2.25rem);
   }
   /* The list is what a phone came for, so the band gives up its sentence and keeps the facts. */
-  .hm-band:not(.hm-band--job) .hm-band-blurb {
+  .hm-band:not(.hm-band--job, .hm-band--lead) .hm-band-blurb {
     display: none;
   }
   .hm-band-blurb {
@@ -917,12 +917,14 @@
   .hm-band-facts li + li::before {
     margin-right: 12px;
   }
-  /* Just the step back: the whole trail would wrap beside the picture. */
-  .hm-band .hm-crumbs li:not(:nth-last-child(2)) {
+  /* Just the step back: on a phone the whole trail costs a line or two of the first screen. */
+  .hm-crumbs li:not(:nth-last-child(2)) {
     display: none;
   }
-  .hm-band .hm-crumbs li::before {
-    content: none;
+  .hm-crumbs li::before,
+  .hm-crumbs li + li::before {
+    content: "\2039";
+    opacity: 0.6;
   }
   .hm-band-arch {
     width: 92%;

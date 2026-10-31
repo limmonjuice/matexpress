@@ -12,12 +12,13 @@ export default function ReturnsHelp() {
   return (
     <InfoPage
       title="Returns and damage"
+      image="/home/products/in-use/portland-cement.webp"
       lead="If it arrives broken, short or wrong, we replace it free. Check the load before you sign."
-      crumbs={[{ label: "Home", href: "/" }, { label: "Help" }, { label: "Returns and damage" }]}
+      crumbs={[{ label: "Home", href: "/" }, { label: "Returns and damage" }]}
       nav={HELP_NAV}
       current="/help/returns"
     >
-      <div className="hm-prose">
+      <div className="hm-prose hm-arrive">
         <h2>If something is wrong on arrival</h2>
         <ol className="hm-steps">
           <li>

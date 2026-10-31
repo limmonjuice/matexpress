@@ -38,7 +38,7 @@ async function RecentOrders() {
 
 export default function TrackPage() {
   return (
-    <div className="hm-frame hm-trackpage">
+    <div className="hm-frame hm-trackpage hm-arrive">
       <div>
         <h1>Where&apos;s my order?</h1>
         <p>Enter your order number and the mobile number on the order. No account needed.</p>

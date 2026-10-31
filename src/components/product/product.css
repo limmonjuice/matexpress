@@ -6,7 +6,8 @@
 .hm-pv {
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
-  gap: clamp(20px, 3.4vw, 48px);
+  grid-template-rows: auto 1fr;
+  column-gap: clamp(20px, 3.4vw, 48px);
   margin-top: 8px;
 }
 
@@ -16,7 +17,8 @@
   position: sticky;
   top: 92px;
   align-self: start;
-  grid-row: 1;
+  grid-column: 1;
+  grid-row: 1 / span 2;
   min-width: 0;
 }
 .hm-gallery-main {
@@ -159,8 +161,14 @@
 
 /* ---------------------------------------------------------------- buy box */
 
-.hm-buy {
+.hm-buy-head {
+  grid-column: 2;
   grid-row: 1;
+  min-width: 0;
+}
+.hm-buy {
+  grid-column: 2;
+  grid-row: 2;
   min-width: 0;
 }
 .hm-buy-title {
@@ -657,13 +665,18 @@
   font-weight: 700;
   letter-spacing: -0.025em;
 }
-.hm-specs {
-  grid-column: 1 / -1;
+.hm-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(28px, 5vw, 72px);
   margin-top: clamp(28px, 4vw, 56px);
+}
+.hm-specs,
+.hm-about {
+  min-width: 0;
 }
 .hm-specs table {
   width: 100%;
-  max-width: 760px;
   margin-top: 12px;
   border-collapse: collapse;
   font-size: 0.9375rem;
@@ -680,10 +693,6 @@
   padding-right: 16px;
   color: var(--hm-muted);
   font-weight: 500;
-}
-.hm-about {
-  margin-top: clamp(28px, 4vw, 56px);
-  max-width: 760px;
 }
 .hm-about p {
   margin-top: 10px;
@@ -801,6 +810,7 @@
   font-weight: 700;
 }
 .hm-review > p {
+  max-width: 68ch;
   margin-top: 4px;
   line-height: 1.5;
 }
@@ -825,31 +835,15 @@
 /* --------------------------------------------------------------- by width */
 
 @media (max-width: 959px) {
-  .hm-pv {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .hm-gallery {
-    position: static;
-    grid-row: auto;
-  }
-  .hm-buy {
-    grid-row: auto;
-  }
-  .hm-gallery-main {
-    aspect-ratio: 4 / 3;
-    border-radius: 24px;
-  }
-  .hm-gallery-main[data-drawing="true"] {
-    aspect-ratio: 1;
-  }
   .hm-reviews-grid {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-@media (max-width: 699px) {
-  .hm-gallery-main {
-    aspect-ratio: 1;
+  /* The buy box is a narrow column from here down, so its rows pack tighter. */
+  .hm-quick {
+    flex: 1 0 100%;
+  }
+  .hm-quick button {
+    flex: 1;
   }
   .hm-offer label {
     gap: 8px;
@@ -866,11 +860,45 @@
   .hm-offer-who b {
     font-size: 0.875rem;
   }
-  .hm-quick {
-    flex: 1 0 100%;
+}
+
+@media (max-width: 699px) {
+  .hm-pv {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    row-gap: 12px;
   }
-  .hm-quick button {
-    flex: 1;
+  .hm-buy-head,
+  .hm-gallery,
+  .hm-buy {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .hm-gallery {
+    position: static;
+  }
+  .hm-gallery-main {
+    aspect-ratio: 6 / 5;
+    border-radius: 24px;
+  }
+  .hm-gallery-main[data-drawing="true"] {
+    aspect-ratio: 1;
+  }
+  .hm-gallery-thumbs button,
+  .hm-gallery-thumbs button img,
+  .hm-gallery-thumbs button svg {
+    width: 68px;
+  }
+  .hm-gallery-thumbs button img,
+  .hm-gallery-thumbs button svg {
+    height: 68px;
+  }
+  .hm-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The end of the page stays readable above the bar. */
+  .hm:has(.hm-buybar) .hm-footer {
+    padding-bottom: 72px;
   }
   .hm:has(.hm-buybar[data-show="true"]) .hm-cartbar {
     transform: translateY(calc(100% + 20px));
@@ -925,7 +953,7 @@
   border-radius: 28px;
   background: var(--hm-stone);
 }
-@media (max-width: 959px) {
+@media (max-width: 699px) {
   .hm-pd-skeleton {
     grid-template-columns: minmax(0, 1fr);
   }

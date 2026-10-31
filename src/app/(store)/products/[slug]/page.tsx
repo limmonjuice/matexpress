@@ -82,19 +82,19 @@ async function ProductContent({ params }: Props) {
             { label: product.name },
           ]}
         />
-        <ProductView product={product} specsFor={specs} />
-
-        <section className="hm-about" aria-labelledby="hm-about-title">
-          <h2 id="hm-about-title" className="hm-pd-title">
-            About this material
-          </h2>
-          <p>{product.description}</p>
-          <ul>
-            {product.highlights.map((highlight) => (
-              <li key={highlight}>{highlight}</li>
-            ))}
-          </ul>
-        </section>
+        <ProductView product={product} specsFor={specs}>
+          <section className="hm-about" aria-labelledby="hm-about-title">
+            <h2 id="hm-about-title" className="hm-pd-title">
+              About this material
+            </h2>
+            <p>{product.description}</p>
+            <ul>
+              {product.highlights.map((highlight) => (
+                <li key={highlight}>{highlight}</li>
+              ))}
+            </ul>
+          </section>
+        </ProductView>
 
         <Reviews product={product} reviews={reviews} />
       </div>

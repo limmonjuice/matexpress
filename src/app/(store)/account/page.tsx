@@ -32,7 +32,7 @@ async function AccountContent({ searchParams }: { searchParams: Promise<RawParam
 
   if (!user) {
     return (
-      <div className="hm-frame hm-auth">
+      <div className="hm-frame hm-auth hm-arrive">
         <div className="hm-auth-pitch">
           <h1>Your account</h1>
           <ul>
@@ -64,7 +64,7 @@ async function AccountContent({ searchParams }: { searchParams: Promise<RawParam
         <SignOutButton />
       </div>
 
-      <div className="hm-account-grid">
+      <div className="hm-account-grid hm-arrive">
         <section aria-labelledby="hm-account-orders">
           <h2 id="hm-account-orders">Your orders</h2>
           {orders.length === 0 ? (

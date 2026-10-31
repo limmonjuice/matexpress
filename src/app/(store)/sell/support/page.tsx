@@ -39,12 +39,13 @@ export default function SellerSupport() {
   return (
     <InfoPage
       title="Seller support"
+      image="/home/categories/hardware.webp"
       lead="Straight answers for hardware stores. For anything else, call us."
       crumbs={[{ label: "Home", href: "/" }, { label: "Sell on MatExpress", href: "/sell" }, { label: "Seller support" }]}
       nav={SELL_NAV}
       current="/sell/support"
     >
-      <div className="hm-prose">
+      <div className="hm-prose hm-arrive">
         {QUESTIONS.map(({ q, a }) => (
           <details key={q}>
             <summary>{q}</summary>

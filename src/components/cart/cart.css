@@ -358,12 +358,26 @@
   }
   .hm-load-truck {
     order: 2;
-    max-width: 300px;
+    max-width: 216px;
     margin-inline: auto;
     width: 100%;
   }
   .hm-load-copy {
     padding-bottom: 0;
+  }
+  /* The route in one line: the sellers' names are in the boxes right below. */
+  .hm-route {
+    gap: 6px 20px;
+    margin-top: 10px;
+  }
+  .hm-route li:not(.hm-route-end) > span:not(.hm-mark) {
+    display: none;
+  }
+  .hm-route .hm-mark,
+  .hm-route-pin {
+    width: 30px;
+    height: 30px;
+    font-size: 0.75rem;
   }
   .hm-cartrow {
     grid-template-columns: 64px minmax(0, 1fr);
@@ -375,6 +389,10 @@
   }
   .hm-cartrow-total {
     grid-column: 2;
+  }
+  /* The end of the page stays readable above the bar. */
+  .hm:has(.hm-cart-stickybar) .hm-footer {
+    padding-bottom: 72px;
   }
   .hm-cart-stickybar {
     position: fixed;

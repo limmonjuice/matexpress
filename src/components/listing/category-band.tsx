@@ -11,6 +11,8 @@ type Props = {
   crumbs: { label: string; href?: string }[];
   /** Plain facts about the list, in a line under the blurb. */
   facts?: string[];
+  /** Keep the sentence on a phone, for pages where it's the answer and not an introduction. */
+  keepBlurb?: boolean;
   children?: React.ReactNode;
 };
 
@@ -18,10 +20,10 @@ type Props = {
  * The top of a list: the material's own colour as a field, and its picture in
  * the same arch the home page's hero stands in.
  */
-export function CategoryBand({ title, blurb, image, field, fieldInk, crumbs, facts, children }: Props) {
+export function CategoryBand({ title, blurb, image, field, fieldInk, crumbs, facts, keepBlurb, children }: Props) {
   return (
     <section className="hm-frame hm-band-wrap">
-      <div className="hm-band" data-ink={fieldInk} style={{ "--hm-field": field } as React.CSSProperties}>
+      <div className={keepBlurb ? "hm-band hm-band--lead" : "hm-band"} data-ink={fieldInk} style={{ "--hm-field": field } as React.CSSProperties}>
         <div className="hm-band-copy">
           <Breadcrumbs items={crumbs} />
           <h1>{title}</h1>

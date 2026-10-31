@@ -12,12 +12,13 @@ export default function HowSellingWorks() {
   return (
     <InfoPage
       title="How selling works"
+      image="/home/categories/masonry.webp"
       lead="You keep the store running. We bring the buyers and the truck."
       crumbs={[{ label: "Home", href: "/" }, { label: "Sell on MatExpress", href: "/sell" }, { label: "How selling works" }]}
       nav={SELL_NAV}
       current="/sell/how-it-works"
     >
-      <div className="hm-prose">
+      <div className="hm-prose hm-arrive">
         <h2>Getting listed</h2>
         <ol className="hm-steps">
           <li>

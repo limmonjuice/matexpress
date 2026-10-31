@@ -95,8 +95,8 @@ export async function OrderView({ found, justPlaced, signedIn }: { found: Loaded
           </div>
           <ol>
             {STAGES.map((stage, i) => (
-              <li key={stage} data-state={i < view.stage ? "done" : i === view.stage ? "now" : "next"}>
-                <i aria-hidden="true">{i < view.stage && <CheckIcon />}</i>
+              <li key={stage} data-state={i < view.stage || view.delivered ? "done" : i === view.stage ? "now" : "next"}>
+                <i aria-hidden="true">{(i < view.stage || view.delivered) && <CheckIcon />}</i>
                 <span>
                   {stage}
                   {i === 1 && view.stage <= 1 && (
@@ -113,10 +113,10 @@ export async function OrderView({ found, justPlaced, signedIn }: { found: Loaded
         {demo && <p className="hm-track-demo">Demo timeline: this progress is simulated until sellers and drivers are on the system.</p>}
       </section>
 
-      <div className="hm-order-grid">
+      <div className="hm-order-grid hm-arrive">
         <div className="hm-order-col">
           <section className="hm-order-card" aria-labelledby="hm-order-items">
-            <h2 id="hm-order-items">What&apos;s coming</h2>
+            <h2 id="hm-order-items">{view.delivered ? "What came" : "What's coming"}</h2>
             {sellers.map((seller) => (
               <div key={seller.slug} className="hm-order-seller">
                 <p className="hm-order-seller-name">
@@ -186,7 +186,7 @@ export async function OrderView({ found, justPlaced, signedIn }: { found: Loaded
 
         <aside className="hm-order-col">
           <section className="hm-order-card" aria-labelledby="hm-order-site">
-            <h2 id="hm-order-site">Delivering to</h2>
+            <h2 id="hm-order-site">{view.delivered ? "Delivered to" : "Delivering to"}</h2>
             <address>
               <b>{order.contactName}</b>
               {formatMobile(order.mobile)}

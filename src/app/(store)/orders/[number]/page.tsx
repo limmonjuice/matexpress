@@ -34,7 +34,7 @@ async function OrderContent({ params, searchParams }: Props) {
   // The same page whether the number is wrong or just not proven: a guess learns nothing.
   if (!found || !canSeeOrder(found.order, proven, user)) {
     return (
-      <div className="hm-frame hm-trackpage">
+      <div className="hm-frame hm-trackpage hm-arrive">
         <div>
           <h1>Track your order</h1>
           <p>Enter the mobile number on this order to see it.</p>

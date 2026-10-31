@@ -16,14 +16,17 @@ export const metadata: Metadata = {
 const CLAIMS = [
   {
     title: "Buyers already comparing",
+    image: "/home/products/in-use/hollow-block.webp",
     text: "Contractors and architects search here by material, then pick a seller by price and date. If your price is right, they find you without a sales call.",
   },
   {
     title: "No truck needed",
+    image: "/home/products/in-use/crushed-gravel.webp",
     text: "Our trucks collect from your store and from everyone else in the order. You get it ready. We carry it and handle the delivery.",
   },
   {
     title: "Your prices, your stock",
+    image: "/home/categories/masonry.webp",
     text: "Set your own price and your own price breaks at volume. Buyers typing 500 see your best price for 500, so bulk discounts actually win you bulk orders.",
   },
 ];
@@ -47,6 +50,9 @@ export default function SellPage() {
         <div className="hm-claims" data-reveal>
           {CLAIMS.map((claim) => (
             <div key={claim.title}>
+              <span className="hm-claim-photo">
+                <Image src={claim.image} alt="" fill sizes="(max-width: 959px) 100vw, 420px" />
+              </span>
               <h2>{claim.title}</h2>
               <p>{claim.text}</p>
             </div>
@@ -56,7 +62,7 @@ export default function SellPage() {
 
       <section className="hm-frame hm-section hm-applywrap" id="apply" aria-labelledby="hm-apply-title">
         <div>
-          <h2 id="hm-apply-title">Put your store on the map</h2>
+          <h2 id="hm-apply-title" data-split>Put your store on the map</h2>
           <p>Tell us about your store. We&apos;ll call to arrange a visit, because every seller here is checked in person first.</p>
           <p>
             Want the details first? See <Link href="/sell/how-it-works">how selling works</Link> or <Link href="/sell/support">seller support</Link>.

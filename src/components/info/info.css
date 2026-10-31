@@ -1,30 +1,13 @@
 /* Help and seller pages. Tokens come from .hm in home.css. */
 
 .hm-info {
-  padding-top: 18px;
-}
-.hm-info-head h1 {
-  margin-top: 4px;
-  font-size: clamp(2.25rem, 1.3rem + 3.4vw, 4rem);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.035em;
-  animation: hm-fade-up 0.8s var(--hm-rise) both;
-}
-.hm-info-head > p {
-  max-width: 40rem;
-  margin-top: 10px;
-  color: var(--hm-ink-soft);
-  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.25rem);
-  line-height: 1.5;
-  animation: hm-fade-up 0.8s var(--hm-rise) 0.08s both;
+  padding-top: clamp(20px, 3vw, 36px);
 }
 .hm-info-grid {
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr);
   align-items: start;
   gap: clamp(20px, 4vw, 56px);
-  margin-top: clamp(20px, 3vw, 36px);
 }
 .hm-info-nav {
   position: sticky;
@@ -65,6 +48,7 @@
   margin-top: 0;
 }
 .hm-prose p {
+  max-width: 68ch;
   margin-top: 10px;
   font-size: 1.0625rem;
   line-height: 1.6;
@@ -82,6 +66,7 @@
 }
 .hm-prose ul li {
   position: relative;
+  max-width: 68ch;
   padding-left: 18px;
   font-size: 1.0625rem;
   line-height: 1.5;
@@ -200,15 +185,100 @@
   gap: 12px;
   margin-top: 16px;
 }
+.hm-checker dl > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 2px;
+}
 .hm-checker dt {
   color: #aeb6c3;
   font-size: 0.875rem;
 }
 .hm-checker dd {
-  margin-top: 2px;
   font-size: clamp(1.375rem, 1.1rem + 1vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+/* ---------------------------------------------------------------- contact */
+
+.hm-contact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.hm-contact-way {
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  min-height: 190px;
+  padding: clamp(18px, 2.4vw, 28px);
+  border-radius: 24px;
+  background: #fff;
+  transition: transform 0.3s var(--hm-ease);
+}
+.hm-contact-way:hover {
+  transform: translateY(-3px);
+}
+.hm-contact-way[data-dark="true"] {
+  background: var(--hm-dark);
+  color: #f5f2ec;
+}
+.hm-contact-way b {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.25rem, 1rem + 0.6vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+.hm-contact-way span {
+  font-size: 1rem;
+  line-height: 1.4;
+  opacity: 0.8;
+}
+.hm-prose .hm-faster {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.hm-prose .hm-faster li {
+  max-width: none;
+  padding: 0;
+}
+.hm-prose .hm-faster li::before {
+  content: none;
+}
+.hm-prose .hm-faster a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+  height: 100%;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: #fff;
+  font-weight: 400;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+.hm-prose .hm-faster a:hover {
+  background: var(--hm-stone);
+}
+.hm-faster b {
+  font-weight: 700;
+}
+.hm-faster small {
+  grid-column: 1;
+  color: var(--hm-ink-soft);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+}
+.hm-faster .hm-icon {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }
 
 /* ------------------------------------------------------------------- sell */
@@ -263,6 +333,18 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(16px, 3vw, 40px);
+}
+.hm-claim-photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 14px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--hm-stone);
+}
+.hm-claim-photo img {
+  object-fit: cover;
 }
 .hm-claims h2 {
   font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
@@ -436,6 +518,16 @@
 @media (max-width: 699px) {
   .hm-checker dl {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .hm-contact,
+  .hm-prose .hm-faster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hm-contact-way {
+    min-height: 136px;
+  }
+  .hm-claim-photo {
+    aspect-ratio: 16 / 9;
   }
   .hm-apply-form {
     grid-template-columns: minmax(0, 1fr);

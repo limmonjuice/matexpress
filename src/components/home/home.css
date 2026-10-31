@@ -509,13 +509,35 @@ button:hover > .hm-arrow {
   font-weight: 700;
 }
 
+/* A page's blocks arrive in order, the way the home page's sections do. */
+.hm-arrive > * {
+  animation: hm-fade-up 0.7s var(--hm-rise) calc(var(--hm-n, 0) * 0.05s) both;
+}
+.hm-arrive > :nth-child(2) {
+  --hm-n: 1;
+}
+.hm-arrive > :nth-child(3) {
+  --hm-n: 2;
+}
+.hm-arrive > :nth-child(4) {
+  --hm-n: 3;
+}
+.hm-arrive > :nth-child(5) {
+  --hm-n: 4;
+}
+.hm-arrive > :nth-child(6) {
+  --hm-n: 5;
+}
+.hm-arrive > :nth-child(n + 7) {
+  --hm-n: 6;
+}
+
 /* ---------------------------------------------------------------- catbar */
 
 .hm-catbar {
   position: relative;
   z-index: 30;
   background: #fff;
-  box-shadow: 0 1px 0 var(--hm-line);
 }
 .hm-catbar-row {
   position: relative;
@@ -1041,7 +1063,8 @@ button:hover > .hm-arrow {
 .hm-row {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: calc((100% - 4 * 16px) / 5);
+  /* Five to a screen. A shorter row shares out the width rather than stopping short. */
+  grid-auto-columns: minmax(calc((100% - 4 * 16px) / 5), 1fr);
   gap: 16px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
@@ -2375,6 +2398,15 @@ button:hover > .hm-arrow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Inside the store a phone's first screen belongs to the page. The menu button still holds every category. */
+  .hm:not(:has(.hm-hero)) .hm-announce,
+  .hm:not(:has(.hm-hero)) .hm-catbar-links {
+    display: none;
+  }
+  .hm:has(.hm-cartbar[data-show="true"]) .hm-footer {
+    padding-bottom: 72px;
+  }
+
   .hm-cartbar {
     position: fixed;
     z-index: 35;
@@ -2389,7 +2421,7 @@ button:hover > .hm-arrow {
     padding: 0 20px;
     border-radius: 999px;
     background: var(--hm-ink);
-    box-shadow: 0 14px 34px rgb(18 25 37 / 0.28);
+    outline: 1px solid rgb(255 255 255 / 0.18); /* Keeps its edge over the dark footer. */
     color: #fff;
     font-size: 0.9375rem;
     font-weight: 500;

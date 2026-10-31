@@ -31,7 +31,7 @@ function SizeFromUrl({ onSize }: { onSize: (id: string) => void }) {
   return null;
 }
 
-export function ProductView({ product, specsFor }: { product: Product; specsFor: Record<string, string>[] }) {
+export function ProductView({ product, specsFor, children }: { product: Product; specsFor: Record<string, string>[]; children?: React.ReactNode }) {
   const [variantId, setVariantId] = useState(defaultVariant(product).id);
   const variant = product.variants.find((v) => v.id === variantId) ?? defaultVariant(product);
 
@@ -118,9 +118,8 @@ export function ProductView({ product, specsFor }: { product: Product; specsFor:
 
       {/* Its own grid: the sticky gallery stops where the buy box does, not over what's below. */}
       <div className="hm-pv">
-        <Gallery images={product.images} drawing={variant.drawing} name={product.name} size={variant.label} />
-
-        <div className="hm-buy">
+        {/* First in the page, so a phone reads what this is before the picture. */}
+        <header className="hm-buy-head">
           <h1 className="hm-buy-title">{product.name}</h1>
           <p className="hm-buy-sub">
             {variant.spec}
@@ -134,7 +133,11 @@ export function ProductView({ product, specsFor }: { product: Product; specsFor:
             )}
             <span>{plural(variant.offers.length, "seller")}</span>
           </p>
+        </header>
 
+        <Gallery images={product.images} drawing={variant.drawing} name={product.name} size={variant.label} />
+
+        <div className="hm-buy">
           <div className="hm-buy-price" aria-live="polite">
             {chosen ? (
               <>
@@ -308,27 +311,30 @@ export function ProductView({ product, specsFor }: { product: Product; specsFor:
         </button>
       </div>
 
-      <section className="hm-specs" aria-labelledby="hm-specs-title">
-        <h2 id="hm-specs-title" className="hm-pd-title">
-          Specifications
-        </h2>
-        <table>
-          <tbody>
-            {Object.entries(specsFor[product.variants.indexOf(variant)]).map(([label, value]) => (
-              <tr key={label}>
-                <th scope="row">{label}</th>
-                <td>{value}</td>
+      <div className="hm-details" data-reveal>
+        <section className="hm-specs" aria-labelledby="hm-specs-title">
+          <h2 id="hm-specs-title" className="hm-pd-title">
+            Specifications
+          </h2>
+          <table>
+            <tbody>
+              {Object.entries(specsFor[product.variants.indexOf(variant)]).map(([label, value]) => (
+                <tr key={label}>
+                  <th scope="row">{label}</th>
+                  <td>{value}</td>
+                </tr>
+              ))}
+              <tr>
+                <th scope="row">Weight</th>
+                <td>
+                  {formatWeight(variant.weightKg)} per {product.unit}
+                </td>
               </tr>
-            ))}
-            <tr>
-              <th scope="row">Weight</th>
-              <td>
-                {formatWeight(variant.weightKg)} per {product.unit}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+            </tbody>
+          </table>
+        </section>
+        {children}
+      </div>
     </>
   );
 }

@@ -91,7 +91,7 @@ export function CartPage({ products }: { products: Product[] }) {
       </section>
 
       <section className="hm-frame hm-cart-grid">
-        <div className="hm-cart-main">
+        <div className="hm-cart-main hm-arrive">
           {shownNotices.length > 0 && (
             <ul className="hm-notices" aria-label="Changes to your cart">
               {shownNotices.map((notice) => (

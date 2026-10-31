@@ -17,12 +17,13 @@ export default function DeliveryHelp() {
   return (
     <InfoPage
       title="Delivery"
+      image="/home/products/in-use/washed-sand.webp"
       lead="One truck collects from every seller in your order and brings it all in the window you book."
-      crumbs={[{ label: "Home", href: "/" }, { label: "Help" }, { label: "Delivery" }]}
+      crumbs={[{ label: "Home", href: "/" }, { label: "Delivery" }]}
       nav={HELP_NAV}
       current="/help/delivery"
     >
-      <div className="hm-prose">
+      <div className="hm-prose hm-arrive">
         <DeliveryChecker />
 
         <h2>Areas and fees</h2>

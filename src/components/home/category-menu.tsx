@@ -56,7 +56,7 @@ export function CategoryMenu() {
         <ChevronDownIcon className="hm-mega-chevron" />
       </button>
 
-      <div className="hm-mega-panel" data-open={open} inert={!open} data-testid="category-panel" data-lenis-prevent>
+      <div className="hm-mega-panel" data-open={open} aria-hidden={!open} inert={!open} data-testid="category-panel" data-lenis-prevent>
         <div className="hm-mega-grid">
           {categories.map((category) => (
             <div key={category.slug}>
