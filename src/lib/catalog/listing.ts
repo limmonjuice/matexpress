@@ -1,9 +1,8 @@
 import { bestOffer, defaultVariant, toCard } from "./card";
 import { categories, categoryBySlug } from "./data/categories";
-import { sellerBySlug, sellers } from "./data/sellers";
 import type { CardData, Offer, Product, Variant } from "./types";
 
-// Filtering, sorting and paging for every product list. Pure, so it runs the same over sample data or database rows.
+// Filtering, sorting and paging for every product list. Pure: it's handed the products, wherever they came from.
 
 export type SortKey = "relevance" | "best" | "price-asc" | "price-desc" | "rating" | "new" | "discount";
 
@@ -182,10 +181,8 @@ function facetOptions(def: FacetDef, products: Product[], scope: ListingScope): 
       return unique(products.map((p) => ({ value: p.brand, label: p.brand })));
     case "category":
       return categories.filter((c) => products.some((p) => p.categorySlug === c.slug)).map((c) => ({ value: c.slug, label: c.name }));
-    case "seller": {
-      const present = new Set(products.flatMap(offersOf).map((o) => o.sellerSlug));
-      return sellers.filter((s) => present.has(s.slug)).map((s) => ({ value: s.slug, label: s.name }));
-    }
+    case "seller":
+      return unique(products.flatMap(offersOf).map((o) => ({ value: o.sellerSlug, label: o.sellerName }))).sort((a, b) => a.label.localeCompare(b.label));
     default:
       return unique(
         products.flatMap((p) =>
@@ -355,6 +352,5 @@ export function sellerFacts(products: Product[], sellerSlug: string) {
     productCount: sold.length,
     cheapestCount: cheapest.length,
     sameDayShare: fastest.length ? Math.round((sameDay / fastest.length) * 100) : 0,
-    name: sellerBySlug(sellerSlug)?.name,
   };
 }

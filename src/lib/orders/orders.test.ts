@@ -1,8 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
-import { products } from "@/lib/catalog/data/products";
-import { createOrder, newOrderNumber, type NewOrder, type OrderStore } from "./create-order";
+import { products } from "@/db/sample/products";
+import { createOrder, newOrderNumber, NotEnoughStockError, type NewOrder, type OrderStore } from "./create-order";
 import { lineTotal } from "@/lib/pricing";
-import { priceOrder, toCentavos } from "./price-order";
+import { toCentavos } from "@/lib/format";
+import { priceOrder } from "./price-order";
 import { formatMobile, normalizeMobile, validateCheckout, validateSite, type CheckoutInput } from "./rules";
 
 const now = new Date("2026-11-02T09:00:00+08:00");
@@ -34,6 +35,7 @@ function fakeStore(): OrderStore & { saved: NewOrder[] } {
     insert: async (order) => {
       if (saved.some((o) => o.idempotencyKey === order.idempotencyKey)) throw new Error("duplicate key");
       saved.push(order);
+      return { soldOut: false };
     },
     recordPayment: async (number, { status, ref }) => {
       const order = saved.find((o) => o.number === number)!;
@@ -42,6 +44,8 @@ function fakeStore(): OrderStore & { saved: NewOrder[] } {
     },
   };
 }
+
+const loadProducts = async () => products;
 
 const payments = { start: vi.fn(async () => ({ status: "paid" as const, ref: "SIM-1" })) };
 
@@ -178,10 +182,69 @@ describe("priceOrder", () => {
   test("an empty order is refused", () => {
     expect(priceOrder([], products, "Rizal").ok).toBe(false);
   });
+
+  test("each line knows the least its seller can sell", () => {
+    const blocks = priceOrder([{ slug: "hollow-block", variantId: "4-in", sellerSlug: "bato-aggregates", quantity: 50, unitPrice: 15 }], products, "Rizal");
+    const sand = priceOrder([{ slug: "washed-sand", variantId: "fine", sellerSlug: "bato-aggregates", quantity: 1.5, unitPrice: 1450 }], products, "Rizal");
+    const cement = priceOrder([line()], products, "Rizal");
+    expect(blocks).toMatchObject({ ok: true, lines: [{ minOrder: 50 }] });
+    expect(sand).toMatchObject({ ok: true, lines: [{ minOrder: 1 }] });
+    expect(cement).toMatchObject({ ok: true, lines: [{ minOrder: 1 }] });
+  });
+});
+
+describe("two buyers after the same stock", () => {
+  // What's left once the other buyer's order has gone through.
+  const leaving = (stock: number) =>
+    products.map((p) => (p.slug === "portland-cement" ? { ...p, variants: p.variants.map((v) => ({ ...v, offers: v.offers.map((o) => (o.sellerSlug === "dalisay-hardware" ? { ...o, stock } : o)) })) } : p));
+  const lost = (): OrderStore & { saved: NewOrder[] } => ({ ...fakeStore(), insert: async () => Promise.reject(new NotEnoughStockError()) });
+
+  test("the one who loses is told what's left, and isn't charged", async () => {
+    payments.start.mockClear();
+    const store = lost();
+    const load = vi.fn<() => Promise<typeof products>>().mockResolvedValueOnce(products).mockResolvedValue(leaving(4));
+    const result = await createOrder(input(), { loadProducts: load, store, payments, now });
+    expect(result).toMatchObject({ kind: "changed", problems: [{ kind: "quantity", slug: "portland-cement", quantity: 4 }] });
+    expect(payments.start).not.toHaveBeenCalled();
+    expect(store.saved).toEqual([]);
+  });
+
+  test("if none is left, it's gone", async () => {
+    const load = vi.fn<() => Promise<typeof products>>().mockResolvedValueOnce(products).mockResolvedValue(leaving(0));
+    expect(await createOrder(input(), { loadProducts: load, store: lost(), payments, now })).toMatchObject({ kind: "changed", problems: [{ kind: "gone", slug: "portland-cement" }] });
+  });
+
+  test("if there's enough again a moment later, they're still asked to look again, not charged on a guess", async () => {
+    payments.start.mockClear();
+    expect(await createOrder(input(), { loadProducts, store: lost(), payments, now })).toMatchObject({ kind: "changed" });
+    expect(payments.start).not.toHaveBeenCalled();
+  });
+
+  test("the same key arriving twice is one order, not a shortage", async () => {
+    const store = fakeStore();
+    await createOrder(input(), { loadProducts, store, payments, now });
+    const racing: OrderStore = {
+      findNumberByKey: vi.fn<OrderStore["findNumberByKey"]>().mockResolvedValueOnce(undefined).mockImplementation(store.findNumberByKey),
+      insert: async () => Promise.reject(new NotEnoughStockError()),
+      recordPayment: store.recordPayment,
+    };
+    expect(await createOrder(input(), { loadProducts, store: racing, payments, now })).toMatchObject({ kind: "placed", alreadyPlaced: true });
+  });
+
+  test("an order that leaves a seller sold out says so", async () => {
+    const store: OrderStore = { ...fakeStore(), insert: async () => ({ soldOut: true }) };
+    expect(await createOrder(input(), { loadProducts, store, payments, now })).toMatchObject({ kind: "placed", soldOut: true });
+  });
+
+  test("prices are read fresh for the order, not reused from before", async () => {
+    const load = vi.fn(loadProducts);
+    await createOrder(input(), { loadProducts: load, store: fakeStore(), payments, now });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("createOrder", () => {
-  const run = (i: CheckoutInput, store = fakeStore()) => createOrder(i, { products, store, payments, now });
+  const run = (i: CheckoutInput, store = fakeStore()) => createOrder(i, { loadProducts, store, payments, now });
 
   test("places an order with the server's totals and a normalized mobile", async () => {
     const store = fakeStore();
@@ -209,20 +272,20 @@ describe("createOrder", () => {
       insert: store.insert,
       recordPayment: store.recordPayment,
     };
-    const result = await createOrder(input(), { products, store: racing, payments, now });
+    const result = await createOrder(input(), { loadProducts, store: racing, payments, now });
     expect(result).toMatchObject({ kind: "placed", alreadyPlaced: true });
     expect(store.saved).toHaveLength(1);
   });
 
   test("a store failure that isn't a duplicate isn't hidden", async () => {
     const broken: OrderStore = { findNumberByKey: async () => undefined, insert: async () => Promise.reject(new Error("database down")), recordPayment: async () => {} };
-    await expect(createOrder(input(), { products, store: broken, payments, now })).rejects.toThrow("database down");
+    await expect(createOrder(input(), { loadProducts, store: broken, payments, now })).rejects.toThrow("database down");
   });
 
   test("an order that can't be saved is never charged", async () => {
     payments.start.mockClear();
     const broken: OrderStore = { findNumberByKey: async () => undefined, insert: async () => Promise.reject(new Error("database down")), recordPayment: async () => {} };
-    await expect(createOrder(input(), { products, store: broken, payments, now })).rejects.toThrow();
+    await expect(createOrder(input(), { loadProducts, store: broken, payments, now })).rejects.toThrow();
     expect(payments.start).not.toHaveBeenCalled();
   });
 
@@ -233,7 +296,7 @@ describe("createOrder", () => {
       expect(store.saved[0].paymentStatus).toBe("pending");
       return { status: "paid" as const, ref: "SIM-2" };
     });
-    await createOrder(input(), { products, store, payments: { start }, now });
+    await createOrder(input(), { loadProducts, store, payments: { start }, now });
     expect(start).toHaveBeenCalledTimes(1);
     expect(store.saved[0]).toMatchObject({ paymentStatus: "paid", paymentRef: "SIM-2" });
   });
@@ -250,11 +313,11 @@ describe("createOrder", () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
     const store = fakeStore();
     const start = vi.fn(async () => Promise.reject<{ status: "paid" }>(new Error("gateway down")));
-    const first = await createOrder(input(), { products, store, payments: { start }, now });
+    const first = await createOrder(input(), { loadProducts, store, payments: { start }, now });
     expect(first.kind).toBe("placed");
     expect(store.saved[0].paymentStatus).toBe("pending");
 
-    const second = await createOrder(input(), { products, store, payments: { start }, now });
+    const second = await createOrder(input(), { loadProducts, store, payments: { start }, now });
     expect(second).toMatchObject({ kind: "placed", alreadyPlaced: true });
     expect(start).toHaveBeenCalledTimes(1);
     quiet.mockRestore();
@@ -264,11 +327,11 @@ describe("createOrder", () => {
     const lunchtime = new Date("2026-11-02T13:30:00+08:00");
     const today = { deliveryDate: "2026-11-02" };
     const cement = [line({ quantity: 2 })];
-    const tooSoon = await createOrder(input({ ...today, lines: cement, deliveryWindow: "8 AM to 12 NN" }), { products, store: fakeStore(), payments, now: lunchtime });
+    const tooSoon = await createOrder(input({ ...today, lines: cement, deliveryWindow: "8 AM to 12 NN" }), { loadProducts, store: fakeStore(), payments, now: lunchtime });
     expect(tooSoon.kind).toBe("invalid");
     if (tooSoon.kind === "invalid") expect(tooSoon.errors.deliveryWindow).toMatch(/too soon/);
 
-    const later = await createOrder(input({ ...today, lines: cement, deliveryWindow: "1 PM to 5 PM" }), { products, store: fakeStore(), payments, now: lunchtime });
+    const later = await createOrder(input({ ...today, lines: cement, deliveryWindow: "1 PM to 5 PM" }), { loadProducts, store: fakeStore(), payments, now: lunchtime });
     expect(later.kind).toBe("placed");
   });
 

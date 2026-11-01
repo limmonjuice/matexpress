@@ -25,9 +25,12 @@ type Props = {
  * The filters are the client's; the results are worked out here.
  */
 export async function Listing({ pathname, scope, rawParams, defaultSort = "best", extraSorts = [], whenEmpty }: Props) {
+  // Before the address. Read here, the catalog gets built into the page ahead of time, so viewing a list costs no database trip.
+  // Read after it, hosting that keeps no memory between requests would query on every view.
+  const products = await listProducts();
   const raw = await rawParams;
   const params = parseListingParams(raw, { defaultSort });
-  const result = queryProducts(await listProducts(), scope, params);
+  const result = queryProducts(products, scope, params);
 
   if (result.scopeTotal === 0 && whenEmpty) return <>{whenEmpty}</>;
 

@@ -1,13 +1,10 @@
 import { categoryBySlug } from "@/lib/catalog/data/categories";
-import { sellerBySlug } from "@/lib/catalog/data/sellers";
 import { productImage } from "@/lib/catalog/card";
 import type { Product } from "@/lib/catalog/types";
 import { deliveryFee } from "@/lib/delivery";
+import { toCentavos, toPesos } from "@/lib/format";
 import { clampQuantity, lineTotal, priceForQuantity } from "@/lib/pricing";
 import type { CheckoutInput } from "./rules";
-
-export const toCentavos = (pesos: number) => Math.round(pesos * 100);
-export const toPesos = (centavos: number) => centavos / 100;
 
 export type PricedLine = {
   productSlug: string;
@@ -24,6 +21,8 @@ export type PricedLine = {
   lineTotalCentavos: number;
   leadDays: number;
   weightKg: number;
+  /** The least this seller can sell of this size: with less than this left, they've sold out. */
+  minOrder: number;
 };
 
 export type OrderProblem =
@@ -51,8 +50,9 @@ export function priceOrder(lines: CheckoutInput["lines"], products: Product[], a
     const product = bySlug.get(line.slug);
     const variant = product?.variants.find((v) => v.id === line.variantId);
     const offer = variant?.offers.find((o) => o.sellerSlug === line.sellerSlug);
+    const minOrder = variant?.minQty ?? variant?.step ?? 1;
     // A seller holding less than their own minimum can't fill any order.
-    if (!product || !variant || !offer || offer.stock < (variant.minQty ?? variant.step ?? 1)) {
+    if (!product || !variant || !offer || offer.stock < minOrder) {
       problems.push({ kind: "gone", slug: line.slug, name: product?.name });
       continue;
     }
@@ -83,7 +83,7 @@ export function priceOrder(lines: CheckoutInput["lines"], products: Product[], a
       variantId: variant.id,
       ...(product.variants.length > 1 ? { variantLabel: variant.label } : {}),
       sellerSlug: offer.sellerSlug,
-      sellerName: sellerBySlug(offer.sellerSlug)?.name ?? offer.sellerSlug,
+      sellerName: offer.sellerName,
       name: product.name,
       unit: product.unit,
       image: productImage(product),
@@ -94,6 +94,7 @@ export function priceOrder(lines: CheckoutInput["lines"], products: Product[], a
       lineTotalCentavos: toCentavos(lineTotal(unitPrice, quantity)),
       leadDays: offer.leadDays,
       weightKg: variant.weightKg * quantity,
+      minOrder,
     });
   }
 

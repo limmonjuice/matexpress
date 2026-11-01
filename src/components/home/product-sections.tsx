@@ -1,10 +1,10 @@
-import { bestSellers, newArrivals } from "@/lib/catalog/home-lists";
+import type { CardData } from "@/lib/catalog/types";
 import { BestSellerCard } from "./best-seller-card";
 import { ProductCard } from "./product-card";
 import { ProductRow } from "./product-row";
 import { SectionHeading } from "./section-heading";
 
-export function ProductSections() {
+export function ProductSections({ newArrivals, bestSellers }: { newArrivals: CardData[]; bestSellers: CardData[] }) {
   return (
     <>
       <section className="hm-frame hm-section">

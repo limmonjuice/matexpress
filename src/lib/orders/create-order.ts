@@ -39,10 +39,16 @@ export type NewOrder = {
   lines: PricedLine[];
 };
 
+/** A seller has less left than the order asks for, because someone else just bought it. Nothing was saved. */
+export class NotEnoughStockError extends Error {}
+
 export type OrderStore = {
   findNumberByKey: (key: string) => Promise<string | undefined>;
-  /** Throws if the idempotency key is already taken. */
-  insert: (order: NewOrder) => Promise<void>;
+  /**
+   * Saves the order and takes its stock, together or not at all. Throws if the idempotency key is already taken,
+   * and NotEnoughStockError if a seller is short. `soldOut` says a seller can no longer fill another order of something.
+   */
+  insert: (order: NewOrder) => Promise<{ soldOut: boolean }>;
   recordPayment: (number: string, payment: { status: PaymentStatus; ref?: string }) => Promise<void>;
 };
 
@@ -51,24 +57,25 @@ export type PaymentProvider = {
 };
 
 export type CreateOrderResult =
-  | { kind: "placed"; number: string; alreadyPlaced?: boolean }
+  | { kind: "placed"; number: string; alreadyPlaced?: boolean; soldOut?: boolean }
   | { kind: "invalid"; errors: FieldErrors }
   | { kind: "changed"; problems: OrderProblem[] };
 
 type Deps = {
-  products: Product[];
+  /** The real prices and stock of what's being ordered. */
+  loadProducts: () => Promise<Product[]>;
   store: OrderStore;
   payments: PaymentProvider;
   now: Date;
   userId?: string;
 };
 
-export async function createOrder(input: CheckoutInput, { products, store, payments, now, userId }: Deps): Promise<CreateOrderResult> {
+export async function createOrder(input: CheckoutInput, { loadProducts, store, payments, now, userId }: Deps): Promise<CreateOrderResult> {
   // A double tap or a retry on a slow network sends the same key: answer with the order it already made.
   const existing = await store.findNumberByKey(input.idempotencyKey);
   if (existing) return { kind: "placed", number: existing, alreadyPlaced: true };
 
-  const priced = priceOrder(input.lines, products, input.site.area);
+  const priced = priceOrder(input.lines, await loadProducts(), input.site.area);
   if (!priced.ok) return { kind: "changed", problems: priced.problems };
 
   const { needsAccess } = loadFor(priced.weightKg);
@@ -85,8 +92,9 @@ export async function createOrder(input: CheckoutInput, { products, store, payme
   const number = newOrderNumber();
 
   // Saved before any charge: the unique key lets one request through, and no one pays for an order that doesn't exist.
+  let soldOut: boolean;
   try {
-    await store.insert({
+    ({ soldOut } = await store.insert({
       id: crypto.randomUUID(),
       number,
       ...(userId ? { userId } : {}),
@@ -106,11 +114,16 @@ export async function createOrder(input: CheckoutInput, { products, store, payme
       paymentStatus: "pending",
       idempotencyKey: input.idempotencyKey,
       lines: priced.lines,
-    });
+    }));
   } catch (error) {
     // Two identical requests can pass the first check together. The database keeps one; the other finds it here.
     const raced = await store.findNumberByKey(input.idempotencyKey);
     if (raced) return { kind: "placed", number: raced, alreadyPlaced: true };
+    // Someone else bought it between the check above and saving. Nothing was saved or charged, so say what's left.
+    if (error instanceof NotEnoughStockError) {
+      const fresh = priceOrder(input.lines, await loadProducts(), input.site.area);
+      return { kind: "changed", problems: fresh.ok ? [{ kind: "gone", slug: "" }] : fresh.problems };
+    }
     throw error;
   }
 
@@ -121,5 +134,5 @@ export async function createOrder(input: CheckoutInput, { products, store, payme
     console.error(`Payment failed for ${number}`, error);
   }
 
-  return { kind: "placed", number };
+  return { kind: "placed", number, soldOut };
 }

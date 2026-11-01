@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toCard } from "@/lib/catalog/card";
-import { productBySlug } from "@/lib/catalog/data/products";
+import { productBySlug } from "@/db/sample/products";
 import { useCartStore } from "@/stores/cart-store";
 import { usePreferences } from "@/stores/preferences-store";
 import { ImportSharedList, SavedGrid } from "./saved-grid";

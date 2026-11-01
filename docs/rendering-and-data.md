@@ -17,14 +17,15 @@ SSG, ISR and SSR are no longer three modes you pick per page. With `cacheCompone
 
 | Page | Today | Why |
 | --- | --- | --- |
-| Home, categories hub, help, sell, how it works | SSG | The same for everyone |
-| Product | SSG, every product built ahead of time | The same for everyone. Size comes from the URL in the browser, and add to cart is CSR |
+| Help, sell, how it works | SSG | The same for everyone, and written in code |
+| Home, categories hub | ISR, refreshed hourly | The same for everyone, built from the database |
+| Product | ISR, refreshed hourly, every product built ahead of time | The same for everyone. Size comes from the URL in the browser, and add to cart is CSR |
 | Category, all products, deals, seller, job, search | SSG shell, SSR list | Filters are in the URL and effectively unbounded, so they can't all be built ahead of time. Filtered pages stay real URLs that can be shared |
 | Saved | SSG shell, CSR list | The list lives in the browser, so nobody needs an account to keep one |
 | Cart | SSG shell, CSR contents | The cart lives in the browser, so a cache can never hand one customer's cart to another |
 | Checkout | SSG shell, CSR form, prices checked on the server | What the browser says never decides a price. `priceOrder` works it out again when the order is placed |
 | Track, order, account | SSG shell, SSR contents, never cached | Personal. These are the only pages that read the database as they render |
-| `/api/search-index` | SSG | Fetched the first time someone goes to search, instead of inside every page |
+| `/api/search-index` | ISR, refreshed hourly | Fetched the first time someone goes to search, instead of inside every page |
 
 ## Rules for new code
 
@@ -51,33 +52,23 @@ SSG, ISR and SSR are no longer three modes you pick per page. With `cacheCompone
 - **Neon sleeps after five idle minutes, and the free plan can't turn that off.** The first query after sleeping took 1,007ms when measured, against about 50ms once awake. Today that only lands on order and account pages.
 - **The free plan is 100 compute-hours a month.** That's about 17 days awake at the smallest size (0.25 CU), which is why a tracking page in a forgotten tab must not keep it awake. It used to, by asking every 20 seconds.
 
-## When the catalog moves to Neon
+## How the catalog is read
 
-This hasn't happened. Moving it reverses the earlier decision to keep product cards out of the database, so it needs the client's OK (Decision 1 in the store plan). Pages won't change, because they read through `src/lib/catalog/index.ts`. These functions will:
+Products, sizes, offers, sellers and reviews live in Neon. Categories and job guides are still in code, because they're the site's navigation. `src/db/sample/` is only input for the seed, and a test stops the store importing it.
 
-```ts
-export async function getProduct(slug: string) {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(`product:${slug}`);
-  return db.query.catalogProducts.findFirst({ where: eq(catalogProducts.slug, slug), with: { variants: { with: { offers: true } } } });
-}
-```
-
-When a seller changes a price or stock, call `revalidateTag(`product:${slug}`, "max")`, plus the tags of the lists it appears in, and log each one with the reason.
-
-- **Time and on-demand together.** The hour is the safety net if a revalidation is ever missed. A shorter time isn't safer, it's just more database work.
-- **A price shown can be slightly old. A price charged can't.** Checkout already recalculates from the catalog in `priceOrder`. That read must skip the cache.
-- **Build the bestsellers ahead of time, not everything.** `generateStaticParams` returns the top few hundred. The rest get the shell at once and are built on their first visit.
-- **Cached lists are keyed on the cleaned-up filters,** using `parseListingParams`, so `?size=16+mm&sort=best` and `?sort=best&size=16+mm` share one entry. Filter combinations are unbounded, so give them a shorter life than products.
-- **The cart can't keep receiving the whole catalog.** Today `/cart` sends every product to the browser to check saved lines against. That's fine for 48 products and impossible for 10,000. It becomes a server check of only the lines in the cart, and the same goes for `/saved`.
-- **The search index needs a limit too.** At 48 products it's 20KB. Past a few thousand, the header box should ask the server instead.
-- **`use cache` lives in each server instance's memory** and doesn't outlive a deploy. If the hit rate on serverless turns out low, `"use cache: remote"` shares it, but it costs a service and only pays off at a high hit rate. Measure first.
-- **A sleeping database stops mattering to shoppers.** Cached pages keep being served while it sleeps, and only the background refresh pays the wake-up.
+- **Setting up a database:** `npm run db:migrate`, then `npm run db:seed`. The seed only fills an empty catalog, and reads everything back to prove it matches. `npm run db:seed -- --reset` replaces prices and stock, so never run it once real sellers are on the site.
+- **The build needs `DATABASE_URL` and a seeded database,** because pages are built from it.
+- **Pages read through `src/lib/catalog/index.ts`:** `"use cache"`, `cacheLife("hours")` and `cacheTag("catalog")`. There's no admin screen yet, so a price edited directly in the database shows within about an hour, or on the next deploy.
+- **Read the catalog before reading the URL.** Read first, it's built into the page ahead of time, and a fresh server served 175 pages with 2 database trips. Read after, hosting that keeps no memory between requests would query on every view.
+- **A price shown can be an hour old. A price charged can't.** Checkout reads `liveProducts`, which is never cached.
+- **Stock can't go below zero.** Taking stock is in the same batch as saving the order, and a check on `offers` makes the whole batch fail if a seller is short, so the second of two buyers saves nothing and isn't charged.
+- **Pages refresh on a sell-out, not on every order,** because rebuilding the store per order costs far more than it's worth.
+- **An unpaid order keeps its stock.** Real payments (Task 14) need to release it.
+- **Limits to change as the catalog grows:** lists load the whole catalog into one cached entry, `/cart` and `/saved` send every product to the browser, and the search index is 20KB at 48 products. All of that is fine now and won't be at a few thousand products.
+- **`use cache` lives in each server instance's memory** and doesn't outlive a deploy. `"use cache: remote"` shares it, but costs a service and only pays off at a high hit rate. Measure first.
 
 ## Considered and left out
 
-- **`"use cache"` on today's catalog.** It's already in memory and these pages make 0 queries, so there's nothing to save.
 - **Fully static category pages.** Reading the filters from the URL means each view runs about 50ms on the server, with 0 queries. Making them static would mean sending a whole category to the browser to filter there, which stops working as the catalog grows.
 - **Better Auth's session cookie cache.** It would save 2 trips, on only three pages. But a signed-out or revoked session would keep working until the cookie expired, and `SECURITY.md` promises that changing a password signs out other devices.
 - **Retrying failed reads.** Neon's first request after sleeping succeeded when tested, and a failed page already shows a working "try again". Writes must never retry blindly.
@@ -86,7 +77,7 @@ When a seller changes a price or stock, call `revalidateTag(`product:${slug}`, "
 
 ## Results
 
-Measured on 2026-11-01 against a production build on this machine. The server is local, so server time here is lower than it will be when hosted. Phone figures use a new browser for every run, Chrome's Slow 4G profile (1.6 Mbps, 150ms latency), a processor slowed 4× and a 390×844 screen.
+Measured on 2026-11-01 against a production build on this machine, before the catalog moved to Neon. The server is local, so server time here is lower than it will be when hosted. Phone figures use a new browser for every run, Chrome's Slow 4G profile (1.6 Mbps, 150ms latency), a processor slowed 4× and a 390×844 screen.
 
 **The database**
 

@@ -5,7 +5,8 @@ import { Listing } from "@/components/listing/listing";
 import { ListingSkeleton } from "@/components/listing/listing-skeleton";
 import { NoResults } from "@/components/listing/no-results";
 import "@/components/listing/listing.css";
-import { getSearchIndex } from "@/lib/catalog";
+import { getSearchIndex, listProducts } from "@/lib/catalog";
+import { homeLists } from "@/lib/catalog/home-lists";
 import { alternativeQueries, searchProducts } from "@/lib/catalog/search";
 
 export const metadata: Metadata = {
@@ -33,13 +34,14 @@ export default function SearchPage({ searchParams }: { searchParams: Promise<Raw
 }
 
 async function SearchResults({ searchParams }: { searchParams: Promise<RawParams> }) {
+  // Before the address, as in Listing: these get built into the page, so a search costs no database trip.
+  const [index, products] = await Promise.all([getSearchIndex(), listProducts()]);
   const raw = await searchParams;
   const q = typeof raw.q === "string" ? raw.q.trim() : "";
-  const index = await getSearchIndex();
   const result = searchProducts(index, q, index.length);
 
   if (result.items.length === 0) {
-    return <NoResults query={q} alternatives={alternativeQueries(index, q)} sizeBySlug={result.sizeBySlug} />;
+    return <NoResults query={q} alternatives={alternativeQueries(index, q)} sizeBySlug={result.sizeBySlug} bestSellers={homeLists(products).bestSellers} />;
   }
 
   return (

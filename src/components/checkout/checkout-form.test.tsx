@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { toLine } from "@/lib/catalog/card";
-import { productBySlug } from "@/lib/catalog/data/products";
+import { sellerDirectory, toLine } from "@/lib/catalog/card";
+import { productBySlug } from "@/db/sample/products";
+import { sellers } from "@/db/sample/sellers";
 import { deliveryFee } from "@/lib/delivery";
 import { formatPeso } from "@/lib/format";
 import { useCartStore, type CartLine } from "@/stores/cart-store";
@@ -37,7 +38,7 @@ async function show(lines: CartLine[]) {
   });
   useCartStore.setState({ lines });
   usePreferences.setState({ area: "Rizal", saved: [] });
-  render(<Checkout />);
+  render(<Checkout sellers={sellerDirectory(sellers)} />);
 }
 
 async function fillSite() {
@@ -151,7 +152,7 @@ describe("Checkout", () => {
     expect(await screen.findByText(/We couldn't reach the store/)).toBeInTheDocument();
     cleanup();
 
-    render(<Checkout />);
+    render(<Checkout sellers={sellerDirectory(sellers)} />);
     await userEvent.click(await screen.findByRole("button", { name: /^Place order/ }));
     await waitFor(() => expect(mocks.placeOrder).toHaveBeenCalledTimes(2));
     expect(mocks.placeOrder.mock.calls[1][0].idempotencyKey).toBe(mocks.placeOrder.mock.calls[0][0].idempotencyKey);

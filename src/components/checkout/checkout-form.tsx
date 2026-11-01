@@ -10,6 +10,7 @@ import { SellerMark } from "@/components/product/seller-mark";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useNow } from "@/hooks/use-now";
 import { authClient } from "@/lib/auth-client";
+import type { SellerDirectory } from "@/lib/catalog/types";
 import { arrivalDate, bookableDays, dayKey, deliveryAreas, deliveryFee, DELIVERY_WINDOWS, openWindows } from "@/lib/delivery";
 import { formatPeso, plural } from "@/lib/format";
 import { formatWeight, loadFor } from "@/lib/load";
@@ -57,7 +58,7 @@ function keyFor(fingerprint: string, current: Attempt | null): Attempt {
 }
 
 /** Waits for the saved cart, so nothing renders from an empty one first. */
-export function Checkout() {
+export function Checkout({ sellers }: { sellers: SellerDirectory }) {
   const cartReady = useHydrated(useCartStore);
   const preferencesReady = useHydrated(usePreferences);
   const router = useRouter();
@@ -81,10 +82,10 @@ export function Checkout() {
       </div>
     );
   }
-  return <CheckoutForm onPlaced={() => (placed.current = true)} />;
+  return <CheckoutForm sellers={sellers} onPlaced={() => (placed.current = true)} />;
 }
 
-function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
+function CheckoutForm({ sellers, onPlaced }: { sellers: SellerDirectory; onPlaced: () => void }) {
   const router = useRouter();
   const lines = useCartStore((s) => s.lines);
   const clearCart = useCartStore((s) => s.clear);
@@ -461,7 +462,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
         <ol className="hm-co-route" aria-label="The route for this order">
           {groups.map((group) => (
             <li key={group.sellerSlug}>
-              <SellerMark slug={group.sellerSlug} name={group.seller} />
+              <SellerMark name={group.seller} tint={sellers[group.sellerSlug]?.tint} />
               {group.seller}
             </li>
           ))}

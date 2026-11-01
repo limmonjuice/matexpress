@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { productBySlug } from "@/lib/catalog/data/products";
+import { productBySlug } from "@/db/sample/products";
+import { sellers } from "@/db/sample/sellers";
+import { sellerDirectory } from "@/lib/catalog/card";
 import type { Product } from "@/lib/catalog/types";
 import { deliveryFee } from "@/lib/delivery";
 import { formatPeso } from "@/lib/format";
@@ -14,8 +16,9 @@ vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(u
 
 const rebar = productBySlug("deformed-rebar")!;
 const blocks = productBySlug("hollow-block")!;
+const directory = sellerDirectory(sellers);
 
-const show = (product: Product) => render(<ProductView product={product} specsFor={product.variants.map(() => ({ Standard: "PNS 49" }))} />);
+const show = (product: Product) => render(<ProductView product={product} sellers={directory} specsFor={product.variants.map(() => ({ Standard: "PNS 49" }))} />);
 
 const quantity = (product: Product) => screen.getByRole("textbox", { name: `Quantity of ${product.name}` });
 
@@ -129,7 +132,7 @@ describe("ProductView", () => {
     test("a seller and a quantity survive the size being set again by the same link", async () => {
       const { rerender } = show(rebar);
       await userEvent.click(screen.getByRole("radio", { name: /Dalisay Hardware/ }));
-      rerender(<ProductView product={rebar} specsFor={rebar.variants.map(() => ({ Standard: "PNS 49" }))} />);
+      rerender(<ProductView product={rebar} sellers={directory} specsFor={rebar.variants.map(() => ({ Standard: "PNS 49" }))} />);
       expect(screen.getByRole("radio", { name: /Dalisay Hardware/ })).toBeChecked();
     });
   });
@@ -139,7 +142,7 @@ describe("ProductView", () => {
     const { rerender } = show(rebar);
     expect(screen.getByRole("radio", { name: "16 mm" })).toBeChecked();
     url.search = "";
-    rerender(<ProductView product={rebar} specsFor={rebar.variants.map(() => ({ Standard: "PNS 49" }))} />);
+    rerender(<ProductView product={rebar} sellers={directory} specsFor={rebar.variants.map(() => ({ Standard: "PNS 49" }))} />);
     expect(screen.getByRole("radio", { name: "12 mm" })).toBeChecked();
   });
 

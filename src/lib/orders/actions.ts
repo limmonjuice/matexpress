@@ -1,8 +1,9 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { listProducts } from "@/lib/catalog";
+import { CATALOG_TAG, liveProducts } from "@/lib/catalog";
 import { toLine } from "@/lib/catalog/card";
 import type { LineData } from "@/lib/catalog/types";
 import { consume, type ThrottleRule } from "@/lib/throttle";
@@ -42,13 +43,18 @@ export async function placeOrder(input: CheckoutInput): Promise<CreateOrderResul
   if (!(await allowedFromHere("order", LIMITS.orderFromAddress))) return { kind: "limited" };
   const user = await currentUser();
   const result = await createOrder(input, {
-    products: await listProducts(),
+    loadProducts: () => liveProducts(input.lines.map((line) => line.slug)),
     store: orderStore,
     payments,
     now: new Date(),
     userId: user?.id,
   });
-  if (result.kind === "placed") await grantOrderAccess(result.number);
+  if (result.kind === "placed") {
+    await grantOrderAccess(result.number);
+    // Pages can show stock up to an hour old, because this checks the real number before anyone pays.
+    // A seller running out is worth rebuilding them for. Every order isn't.
+    if (result.soldOut) revalidateTag(CATALOG_TAG, "max");
+  }
   return result;
 }
 
@@ -93,10 +99,11 @@ export async function buyAgain(number: string): Promise<{ lines: (LineData & { q
   const [order] = await ordersByNumbers([number]);
   if (!order || !canSeeOrder(order, proven, user)) return { lines: [], unavailable: [] };
 
-  const products = await listProducts();
+  const items = await itemsForOrder(order.id);
+  const products = await liveProducts(items.map((item) => item.productSlug));
   const lines: (LineData & { quantity: number })[] = [];
   const unavailable: string[] = [];
-  for (const item of await itemsForOrder(order.id)) {
+  for (const item of items) {
     const product = products.find((p) => p.slug === item.productSlug);
     const variant = product?.variants.find((v) => v.id === item.variantId);
     const offer = variant?.offers.find((o) => o.sellerSlug === item.sellerSlug && o.stock > 0);

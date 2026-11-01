@@ -1,6 +1,8 @@
-import type { Offer, PriceTier, Product, ProductImage } from "../types";
+import type { Offer, PriceTier, Product, ProductImage } from "@/lib/catalog/types";
+import { sellerBySlug } from "./sellers";
 
-// Sample catalog. Brands and sellers are fictional; prices, stock, ratings and dates are placeholders.
+// Sample catalog. src/db/seed.ts loads it into the database, and the tests use it. The store itself never reads this file.
+// Brands and sellers are fictional; prices, stock, ratings and dates are placeholders.
 // Replace all of it with real seller data before launch.
 
 const DALISAY = "dalisay-hardware";
@@ -12,6 +14,7 @@ const KAHOY = "kahoy-lumber";
 
 const offer = (sellerSlug: string, price: number, leadDays: number, stock: number, tiers?: PriceTier[], listPrice?: number): Offer => ({
   sellerSlug,
+  sellerName: sellerBySlug(sellerSlug)!.name,
   price,
   leadDays,
   stock,
@@ -186,6 +189,7 @@ export const products: Product[] = [
   // ---------------------------------------------------------------- steel & rebar
   {
     slug: "deformed-rebar",
+    defaultVariantId: "12-mm",
     name: "Deformed Rebar",
     brand: "Haligi Steel",
     categorySlug: "steel-rebar",
@@ -265,6 +269,7 @@ export const products: Product[] = [
   },
   {
     slug: "tie-wire",
+    defaultVariantId: "25-kg",
     name: "Tie Wire",
     brand: "Haligi Steel",
     categorySlug: "steel-rebar",
@@ -485,6 +490,7 @@ export const products: Product[] = [
   // ------------------------------------------------------------ lumber & plywood
   {
     slug: "marine-plywood",
+    defaultVariantId: "1-2-in",
     name: "Marine Plywood",
     brand: "Kahoy",
     categorySlug: "lumber-plywood",
@@ -531,6 +537,7 @@ export const products: Product[] = [
   },
   {
     slug: "phenolic-board",
+    defaultVariantId: "3-4-in",
     name: "Phenolic Board",
     brand: "Kahoy",
     categorySlug: "lumber-plywood",
@@ -573,6 +580,7 @@ export const products: Product[] = [
   },
   {
     slug: "fiber-cement-board",
+    defaultVariantId: "4-5-mm",
     name: "Fiber Cement Board",
     brand: "Haligi",
     categorySlug: "lumber-plywood",
@@ -682,6 +690,7 @@ export const products: Product[] = [
   // -------------------------------------------------------------------- plumbing
   {
     slug: "upvc-pipe",
+    defaultVariantId: "4-in",
     name: "uPVC Sanitary Pipe",
     brand: "Tubo",
     categorySlug: "plumbing",
@@ -726,6 +735,7 @@ export const products: Product[] = [
   },
   {
     slug: "water-tank",
+    defaultVariantId: "1000-l",
     name: "Polyethylene Water Tank",
     brand: "Tubo",
     categorySlug: "plumbing",
@@ -784,6 +794,7 @@ export const products: Product[] = [
   // ------------------------------------------------------------------ electrical
   {
     slug: "thhn-wire",
+    defaultVariantId: "3-5",
     name: "THHN Wire",
     brand: "Liwanag",
     categorySlug: "electrical",
@@ -808,6 +819,7 @@ export const products: Product[] = [
   },
   {
     slug: "circuit-breaker",
+    defaultVariantId: "20-a",
     name: "Plug-In Circuit Breaker",
     brand: "Liwanag",
     categorySlug: "electrical",
@@ -946,6 +958,7 @@ export const products: Product[] = [
   },
   {
     slug: "safety-boots",
+    defaultVariantId: "42",
     name: "Steel-Toe Safety Boots",
     brand: "Tibay Tools",
     categorySlug: "tools-safety",
@@ -1151,6 +1164,7 @@ export const products: Product[] = [
   // ----------------------------------------------------------------------- tiles
   {
     slug: "floor-tile",
+    defaultVariantId: "60-x-60",
     name: "Porcelain Floor Tile",
     brand: "Kulay",
     categorySlug: "tiles",

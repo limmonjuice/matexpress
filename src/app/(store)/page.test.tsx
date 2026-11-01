@@ -6,6 +6,10 @@ import HomePage from "./page";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/components/home/home-motion", () => ({ HomeMotion: () => null }));
+vi.mock("@/lib/catalog", async () => {
+  const { products } = await import("@/db/sample/products");
+  return { listProducts: async () => products };
+});
 vi.stubGlobal(
   "ResizeObserver",
   class {
@@ -22,13 +26,13 @@ const sourcesIn = (dir: string): string[] =>
   });
 
 describe("Home page", () => {
-  test("has exactly one h1", () => {
-    render(<HomePage />);
+  test("has exactly one h1", async () => {
+    render(await HomePage());
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
-  test("sections come in the planned order", () => {
-    render(<HomePage />);
+  test("sections come in the planned order", async () => {
+    render(await HomePage());
     const titles = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     const order = ["Shop by category", "New arrivals", "Best sellers", "Steel month", "Sell on MatExpress"];
     expect(titles.filter((title) => order.includes(title ?? ""))).toEqual(order);
@@ -42,8 +46,8 @@ describe("Home page", () => {
     }
   });
 
-  test("nothing on the page compares the store to another brand", () => {
-    render(<HomePage />);
+  test("nothing on the page compares the store to another brand", async () => {
+    render(await HomePage());
     expect(document.body.textContent).not.toMatch(/amazon/i);
   });
 });

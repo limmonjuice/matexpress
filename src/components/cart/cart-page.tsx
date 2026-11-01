@@ -9,9 +9,8 @@ import { SellerMark } from "@/components/product/seller-mark";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { useNow } from "@/hooks/use-now";
 import { toLine } from "@/lib/catalog/card";
-import { sellerBySlug } from "@/lib/catalog/data/sellers";
 import { cheaperOffer, reconcileCart, type CartNotice } from "@/lib/catalog/reconcile";
-import type { Product } from "@/lib/catalog/types";
+import type { Product, SellerDirectory } from "@/lib/catalog/types";
 import { deliveryAreas, deliveryFee, formatDay, FREE_DELIVERY_OVER, orderArrival } from "@/lib/delivery";
 import { formatPeso, plural } from "@/lib/format";
 import { formatWeight, loadFor } from "@/lib/load";
@@ -23,7 +22,7 @@ import "./cart.css";
 
 const article = (word: string) => (/^[aeiou6]/i.test(word) ? "an" : "a");
 
-export function CartPage({ products }: { products: Product[] }) {
+export function CartPage({ products, sellers }: { products: Product[]; sellers: SellerDirectory }) {
   const lines = useCartStore((s) => s.lines);
   const setLines = useCartStore((s) => s.setLines);
   const area = usePreferences((s) => s.area);
@@ -87,7 +86,7 @@ export function CartPage({ products }: { products: Product[] }) {
             <ol className="hm-route" aria-label="The route for this order">
               {groups.map((group) => (
                 <li key={group.sellerSlug}>
-                  <SellerMark slug={group.sellerSlug} name={group.seller} />
+                  <SellerMark name={group.seller} tint={sellers[group.sellerSlug]?.tint} />
                   <span>{group.seller}</span>
                 </li>
               ))}
@@ -118,11 +117,11 @@ export function CartPage({ products }: { products: Product[] }) {
           {groups.map((group) => (
             <article key={group.sellerSlug} className="hm-sellerbox">
               <header>
-                <SellerMark slug={group.sellerSlug} name={group.seller} />
+                <SellerMark name={group.seller} tint={sellers[group.sellerSlug]?.tint} />
                 <h2>
                   <Link href={`/sellers/${group.sellerSlug}`}>{group.seller}</Link>
                 </h2>
-                <small>{sellerBySlug(group.sellerSlug)?.city}</small>
+                <small>{sellers[group.sellerSlug]?.city}</small>
               </header>
               <ul>
                 {group.lines.map((line) => (
@@ -222,7 +221,6 @@ function CartRow({ line, products }: { line: CartLine; products: Product[] }) {
 
   const gone = line.stock <= 0;
   const better = gone ? undefined : cheaperOffer(line, products);
-  const betterName = better && sellerBySlug(better.offer.sellerSlug)?.name;
 
   const switchSeller = () => {
     if (!better) return;
@@ -278,7 +276,7 @@ function CartRow({ line, products }: { line: CartLine; products: Product[] }) {
         {note && <p className="hm-qty-note">{note}</p>}
         {better && (
           <p className="hm-cartrow-better">
-            {betterName} has this for {formatPeso(better.saves)} less.{" "}
+            {better.offer.sellerName} has this for {formatPeso(better.saves)} less.{" "}
             <button type="button" onClick={switchSeller}>
               Switch
             </button>

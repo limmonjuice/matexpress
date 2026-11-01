@@ -1,16 +1,37 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { bestOffer, toCard } from "./card";
 import { categories, featuredCategories } from "./data/categories";
 import { jobs } from "./data/jobs";
-import { products, productBySlug } from "./data/products";
-import { sellerBySlug, sellerInitials, sellers } from "./data/sellers";
-import { bestSellers, heroProducts, newArrivals } from "./home-lists";
+import { products, productBySlug } from "@/db/sample/products";
+import { sellerBySlug, sellers } from "@/db/sample/sellers";
+import { sellerInitials } from "@/lib/format";
+import { homeLists } from "./home-lists";
 import { flashDeal } from "./home-content";
 
 const offers = products.flatMap((p) => p.variants.flatMap((v) => v.offers.map((o) => ({ product: p, variant: v, offer: o }))));
 const inPublic = (src: string) => existsSync(path.join(process.cwd(), "public", src));
+
+const sourcesIn = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) return sourcesIn(file);
+    return /\.tsx?$/.test(entry.name) && !/\.test\./.test(entry.name) ? [file] : [];
+  });
+
+describe("where the store gets its catalog", () => {
+  test("nothing but the seed reads the sample data: the store reads the database", () => {
+    const shipped = sourcesIn("src").filter((file) => !/[\\/]db[\\/](seed\.ts|sample[\\/])/.test(file));
+    expect(shipped.filter((file) => /db\/sample|\.\/sample/.test(readFileSync(file, "utf8")))).toEqual([]);
+  });
+
+  test("nothing in the browser reaches for the database", () => {
+    const client = sourcesIn("src").filter((file) => /^\s*["']use client["']/.test(readFileSync(file, "utf8")));
+    expect(client.length).toBeGreaterThan(10);
+    expect(client.filter((file) => /from "@\/db"|from "@\/db\/(?!schema)|from "@\/lib\/catalog"|from "@\/lib\/catalog\/read"/.test(readFileSync(file, "utf8")))).toEqual([]);
+  });
+});
 
 describe("the sample catalog", () => {
   test("has the planned size", () => {
@@ -76,6 +97,7 @@ describe("the sample catalog", () => {
   });
 
   test("the home page keeps its lists and its 8 tiles", () => {
+    const { heroProducts, newArrivals, bestSellers } = homeLists(products);
     expect(heroProducts).toHaveLength(3);
     expect(newArrivals).toHaveLength(6);
     expect(bestSellers).toHaveLength(3);
@@ -94,9 +116,9 @@ describe("bestOffer and toCard", () => {
 
   test("picks the cheapest in-stock offer and breaks ties on lead time", () => {
     const pick = bestOffer([
-      { sellerSlug: "a", price: 100, leadDays: 3, stock: 5 },
-      { sellerSlug: "b", price: 100, leadDays: 1, stock: 5 },
-      { sellerSlug: "c", price: 90, leadDays: 0, stock: 0 },
+      { sellerSlug: "a", sellerName: "A", price: 100, leadDays: 3, stock: 5 },
+      { sellerSlug: "b", sellerName: "B", price: 100, leadDays: 1, stock: 5 },
+      { sellerSlug: "c", sellerName: "C", price: 90, leadDays: 0, stock: 0 },
     ]);
     expect(pick.sellerSlug).toBe("b");
   });

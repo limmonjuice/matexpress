@@ -27,6 +27,9 @@ export function formatPeso(value: number) {
   return Number.isInteger(value) ? whole().format(value) : cents().format(value);
 }
 
+export const toCentavos = (pesos: number) => Math.round(pesos * 100);
+export const toPesos = (centavos: number) => centavos / 100;
+
 /** How much cheaper `price` is than `listPrice`, as a whole percentage. */
 export function discountPercent(listPrice: number, price: number) {
   if (listPrice <= 0 || price >= listPrice) return 0;
@@ -34,3 +37,12 @@ export function discountPercent(listPrice: number, price: number) {
 }
 
 export const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+
+/** Two letters for a seller's mark: "Dalisay Hardware" is DH. */
+export const sellerInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { LoadTruck } from "@/components/cart/load-truck";
 import { CheckIcon } from "@/components/home/icons";
 import { SellerMark } from "@/components/product/seller-mark";
-import { listProducts } from "@/lib/catalog";
 import { formatDay } from "@/lib/delivery";
 import { formatPeso, plural } from "@/lib/format";
 import { formatWeight, loadFor } from "@/lib/load";
@@ -23,25 +22,23 @@ const timeFormat = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", m
 /** The order's day was saved as a date, not a moment, so it reads the same anywhere. */
 const deliveryDay = (key: string) => formatDay(new Date(`${key}T12:00:00+08:00`));
 
-export async function OrderView({ found, justPlaced, signedIn }: { found: LoadedOrder; justPlaced: boolean; signedIn: boolean }) {
+export function OrderView({ found, justPlaced, signedIn }: { found: LoadedOrder; justPlaced: boolean; signedIn: boolean }) {
   const { order, items, events } = found;
-  const products = await listProducts();
 
   // The items saved their names and prices, but the truck's drawing needs what they weigh.
-  const lines = items.map((item) => {
-    const product = products.find((p) => p.slug === item.productSlug);
-    const variant = product?.variants.find((v) => v.id === item.variantId);
-    return {
-      id: item.id,
-      categorySlug: product?.categorySlug ?? "",
-      weightKg: variant?.weightKg ?? 0,
-      quantity: Number(item.quantity),
-    } as CartLine;
-  });
+  const lines = items.map(
+    (item) =>
+      ({
+        id: item.id,
+        categorySlug: item.categorySlug ?? "",
+        weightKg: item.weightKg ?? 0,
+        quantity: Number(item.quantity),
+      }) as CartLine,
+  );
   const weight = lines.reduce((sum, l) => sum + l.weightKg * l.quantity, 0);
   const load = loadFor(weight);
 
-  const sellers = [...new Map(items.map((i) => [i.sellerSlug, { slug: i.sellerSlug, name: i.sellerName }])).values()];
+  const sellers = [...new Map(items.map((i) => [i.sellerSlug, { slug: i.sellerSlug, name: i.sellerName, tint: i.sellerTint ?? undefined }])).values()];
   const demo = demoTimelineOn();
   const tracked = [
     ...events.map((e) => ({ type: e.type as EventType, sellerSlug: e.sellerSlug, at: e.createdAt })),
@@ -122,7 +119,7 @@ export async function OrderView({ found, justPlaced, signedIn }: { found: Loaded
             {sellers.map((seller) => (
               <div key={seller.slug} className="hm-order-seller">
                 <p className="hm-order-seller-name">
-                  <SellerMark slug={seller.slug} name={seller.name} />
+                  <SellerMark name={seller.name} tint={seller.tint} />
                   <Link href={`/sellers/${seller.slug}`}>{seller.name}</Link>
                   <small>{tracked.some((e) => e.type === "seller-confirmed" && e.sellerSlug === seller.slug) ? "Confirmed" : "Waiting to confirm"}</small>
                 </p>

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { toCard } from "./card";
-import { products, productBySlug } from "./data/products";
+import { products, productBySlug } from "@/db/sample/products";
 import { cheaperOffer, reconcileCart } from "./reconcile";
 
 const rebar = productBySlug("deformed-rebar")!;

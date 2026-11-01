@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toLine } from "@/lib/catalog/card";
-import { productBySlug } from "@/lib/catalog/data/products";
+import { productBySlug } from "@/db/sample/products";
 import { useCartStore } from "@/stores/cart-store";
 import { CreateAccountOffer } from "./create-account-offer";
 import { BuyAgainButton, ForgetOrdersButton, LiveRefresh, TrackForm } from "./order-bits";

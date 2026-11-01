@@ -2,7 +2,7 @@
 
 import { useActionState, useState, type ChangeEvent } from "react";
 import { ArrowIcon, CheckIcon, StarIcon, VerifiedIcon } from "@/components/home/icons";
-import { sellerInitials } from "@/lib/catalog/data/sellers";
+import { sellerInitials } from "@/lib/format";
 import { applyToSell } from "@/lib/orders/actions";
 import { FIELD_LIMITS, SELLER_AWNINGS } from "@/lib/orders/rules";
 

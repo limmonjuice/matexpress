@@ -2,8 +2,9 @@ import { StrictMode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { toLine } from "@/lib/catalog/card";
-import { productBySlug, products } from "@/lib/catalog/data/products";
+import { sellerDirectory, toLine } from "@/lib/catalog/card";
+import { productBySlug, products } from "@/db/sample/products";
+import { sellers } from "@/db/sample/sellers";
 import { deliveryFee } from "@/lib/delivery";
 import { formatPeso } from "@/lib/format";
 import { useCartStore, type CartLine } from "@/stores/cart-store";
@@ -26,7 +27,7 @@ async function show(lines: CartLine[]) {
   useCartStore.setState({ lines });
   render(
     <StrictMode>
-      <CartPage products={products} />
+      <CartPage products={products} sellers={sellerDirectory(sellers)} />
     </StrictMode>,
   );
 }
@@ -38,7 +39,7 @@ describe("CartPage", () => {
 
   test("until the saved cart has loaded it shows only the title, so nothing wrong appears and nothing jumps", () => {
     const loaded = vi.spyOn(useCartStore.persist, "hasHydrated").mockReturnValue(false);
-    render(<CartPage products={products} />);
+    render(<CartPage products={products} sellers={sellerDirectory(sellers)} />);
     expect(screen.getByRole("heading", { name: "Your cart" })).toBeInTheDocument();
     expect(screen.queryByText(/₱/)).not.toBeInTheDocument();
     expect(screen.queryByText(/your truck is empty/i)).not.toBeInTheDocument();

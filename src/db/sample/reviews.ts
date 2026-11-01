@@ -1,9 +1,9 @@
-import type { Review } from "../types";
+import type { Review } from "@/lib/catalog/types";
 
 // SAMPLE REVIEWS, labelled as samples wherever they show. Nobody wrote these.
-// Delete this file's contents before launch: invented reviews must never reach real buyers.
+// src/db/seed.ts loads them into the database. Empty the table before launch: invented reviews must never reach real buyers.
 
-const REVIEWS: Record<string, Review[]> = {
+export const sampleReviews: Record<string, Review[]> = {
   "portland-cement": [
     {
       author: "R. Santos",
@@ -139,5 +139,3 @@ const REVIEWS: Record<string, Review[]> = {
     },
   ],
 };
-
-export const reviewsFor = (slug: string): Review[] => REVIEWS[slug] ?? [];

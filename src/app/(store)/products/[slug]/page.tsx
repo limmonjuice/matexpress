@@ -8,8 +8,8 @@ import { Breadcrumbs } from "@/components/listing/breadcrumbs";
 import { ProductView } from "@/components/product/product-view";
 import { Reviews } from "@/components/product/reviews";
 import "@/components/product/product.css";
-import { getCategory, getProduct, getReviews, listProducts } from "@/lib/catalog";
-import { toCard } from "@/lib/catalog/card";
+import { getCategory, getProduct, getReviews, listProducts, listSellers } from "@/lib/catalog";
+import { sellerDirectory, toCard } from "@/lib/catalog/card";
 import { productSchema } from "@/lib/catalog/schema";
 import { subcategoryHref } from "@/lib/catalog/data/categories";
 
@@ -51,11 +51,12 @@ async function ProductContent({ params }: Props) {
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  const [category, reviews, products] = await Promise.all([getCategory(product.categorySlug), getReviews(slug), listProducts()]);
+  const [category, reviews, products, sellers] = await Promise.all([getCategory(product.categorySlug), getReviews(slug), listProducts(), listSellers()]);
   const related = (product.related ?? []).flatMap((relatedSlug) => {
     const found = products.find((p) => p.slug === relatedSlug);
     return found ? [toCard(found)] : [];
   });
+  const sellingThis = new Set(product.variants.flatMap((variant) => variant.offers.map((offer) => offer.sellerSlug)));
 
   // A spec table for each size, with labels only the server's category data knows.
   const specs = product.variants.map((variant) => ({
@@ -82,7 +83,7 @@ async function ProductContent({ params }: Props) {
             { label: product.name },
           ]}
         />
-        <ProductView product={product} specsFor={specs}>
+        <ProductView product={product} sellers={sellerDirectory(sellers.filter((seller) => sellingThis.has(seller.slug)))} specsFor={specs}>
           <section className="hm-about" aria-labelledby="hm-about-title">
             <h2 id="hm-about-title" className="hm-pd-title">
               About this material

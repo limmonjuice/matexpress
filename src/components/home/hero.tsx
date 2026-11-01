@@ -1,12 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { heroProducts } from "@/lib/catalog/home-lists";
+import type { CardData } from "@/lib/catalog/types";
 import { formatPeso } from "@/lib/format";
 import { ArrowIcon } from "./icons";
 
 const SELLER_INITIALS = ["DH", "TS", "BA"];
 
-export function Hero() {
+export function Hero({ products }: { products: CardData[] }) {
   return (
     <section className="hm-frame hm-hero-wrap">
       <div className="hm-hero">
@@ -53,7 +53,7 @@ export function Hero() {
             preload
           />
 
-          {heroProducts.map((product, i) => (
+          {products.map((product, i) => (
             <div key={product.slug} className={`hm-float hm-float--${i + 1}`}>
               <Link href={product.href} className="hm-float-card">
                 <Image src={product.image} alt="" width={64} height={64} />

@@ -4,6 +4,7 @@ import { clampQuantity, lineTotal, priceForQuantity, rankOffers, splitOrder, uni
 
 const offer = (sellerSlug: string, price: number, stock: number, extra: Partial<Offer> = {}): Offer => ({
   sellerSlug,
+  sellerName: sellerSlug,
   price,
   stock,
   leadDays: 1,

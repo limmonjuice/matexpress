@@ -4,13 +4,14 @@ import { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { useArrival } from "@/components/home/arrival";
 import { StarIcon, StoreIcon, VerifiedIcon } from "@/components/home/icons";
-import { sellerBySlug } from "@/lib/catalog/data/sellers";
+import type { SellerDirectory } from "@/lib/catalog/types";
 import { formatPeso } from "@/lib/format";
 import type { RankedOffer } from "@/lib/pricing";
 import { SellerMark } from "./seller-mark";
 
 type Props = {
   ranked: RankedOffer[];
+  sellers: SellerDirectory;
   selected?: string;
   unit: string;
   quantity: number;
@@ -23,7 +24,7 @@ type Props = {
  * being bought. Prices drop at different quantities, so typing a bigger number can
  * move a seller to the top, and the rows slide to show it.
  */
-export function OfferList({ ranked, selected, unit, quantity, onSelect, name }: Props) {
+export function OfferList({ ranked, sellers, selected, unit, quantity, onSelect, name }: Props) {
   const rows = useRef(new Map<string, HTMLElement>());
   const positions = useRef(new Map<string, number>());
 
@@ -73,10 +74,10 @@ export function OfferList({ ranked, selected, unit, quantity, onSelect, name }: 
                 onChange={() => onSelect(slug)}
               />
               <label htmlFor={`hm-offer-${slug}`}>
-                <SellerMark slug={slug} name={sellerBySlug(slug)?.name ?? slug} />
-                <OfferDetails row={row} best={best} soonest={soonest} quantity={quantity} />
+                <SellerMark name={row.offer.sellerName} tint={sellers[slug]?.tint} />
+                <OfferDetails row={row} rating={sellers[slug]?.rating} best={best} soonest={soonest} quantity={quantity} />
               </label>
-              <Link href={`/sellers/${slug}`} className="hm-offer-store" aria-label={`Visit ${sellerBySlug(slug)?.name}'s store`}>
+              <Link href={`/sellers/${slug}`} className="hm-offer-store" aria-label={`Visit ${row.offer.sellerName}'s store`}>
                 <StoreIcon />
               </Link>
             </div>
@@ -87,8 +88,7 @@ export function OfferList({ ranked, selected, unit, quantity, onSelect, name }: 
   );
 }
 
-function OfferDetails({ row, best, soonest, quantity }: { row: RankedOffer; best?: RankedOffer; soonest?: RankedOffer; quantity: number }) {
-  const seller = sellerBySlug(row.offer.sellerSlug);
+function OfferDetails({ row, rating, best, soonest, quantity }: { row: RankedOffer; rating?: number; best?: RankedOffer; soonest?: RankedOffer; quantity: number }) {
   const arrival = useArrival(row.offer.leadDays);
   const isBest = best === row;
   const extra = best && row.canFill ? row.total - best.total : 0;
@@ -97,10 +97,10 @@ function OfferDetails({ row, best, soonest, quantity }: { row: RankedOffer; best
     <>
       <span className="hm-offer-who">
         <b>
-          {seller?.name} <VerifiedIcon />
+          {row.offer.sellerName} <VerifiedIcon />
         </b>
         <small>
-          <StarIcon /> {seller?.rating.toFixed(1)}
+          <StarIcon /> {rating?.toFixed(1)}
           {row.canFill ? (
             <> · Arrives {arrival ?? "soon"}</>
           ) : (

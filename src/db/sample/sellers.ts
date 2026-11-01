@@ -1,6 +1,6 @@
-import type { Seller } from "../types";
+import type { Seller } from "@/lib/catalog/types";
 
-// Sample sellers. All fictional: replace with real, verified stores before launch.
+// Sample sellers. src/db/seed.ts loads them into the database, and the tests use them. All fictional: replace with real, verified stores before launch.
 
 export const sellers: Seller[] = [
   {
@@ -74,12 +74,3 @@ export const sellers: Seller[] = [
 const bySlug = new Map(sellers.map((s) => [s.slug, s]));
 
 export const sellerBySlug = (slug: string) => bySlug.get(slug);
-
-/** Two letters for a seller's mark: "Dalisay Hardware" is DH. */
-export const sellerInitials = (name: string) =>
-  name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase();

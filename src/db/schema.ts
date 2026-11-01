@@ -1,15 +1,21 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  check,
+  date,
+  foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
-  serial,
+  primaryKey,
   text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { Badge, Drawing, Measure, Product, ProductImage } from "@/lib/catalog/types";
 
 // ---------------------------------------------------------------------------
 // Better Auth core tables (user, session, account, verification)
@@ -88,27 +94,114 @@ export const verification = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// App tables
+// The catalog: who sells what, at what price, and how much they have left.
+// Prices are whole centavos, as on orders. `position` keeps lists in the order
+// they were written. Categories and job guides are still in code: they're the
+// site's navigation, and they don't change while it runs.
 // ---------------------------------------------------------------------------
 
-export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
-  sku: text("sku").notNull().unique(),
+export const sellers = pgTable("sellers", {
+  slug: text("slug").primaryKey(),
   name: text("name").notNull(),
-  category: text("category").notNull(),
-  description: text("description"),
-  unit: text("unit").notNull(),
-  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
-  stock: integer("stock").default(0).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
+  city: text("city").notNull(),
+  since: integer("since").notNull(),
+  rating: numeric("rating", { precision: 2, scale: 1, mode: "number" }).notNull(),
+  reviewCount: integer("review_count").notNull(),
+  blurb: text("blurb").notNull(),
+  tint: text("tint").notNull(),
+  awning: text("awning").notNull(),
 });
 
-export type Product = typeof products.$inferSelect;
-export type NewProduct = typeof products.$inferInsert;
+export const products = pgTable("products", {
+  slug: text("slug").primaryKey(),
+  name: text("name").notNull(),
+  brand: text("brand").notNull(),
+  categorySlug: text("category_slug").notNull(),
+  subcategory: text("subcategory").notNull(),
+  unit: text("unit").notNull(),
+  sizeLabel: text("size_label"),
+  badge: text("badge").$type<Badge>(),
+  defaultVariantId: text("default_variant_id"),
+  description: text("description").notNull(),
+  highlights: jsonb("highlights").$type<string[]>().notNull(),
+  images: jsonb("images").$type<ProductImage[]>().notNull(),
+  rating: numeric("rating", { precision: 2, scale: 1, mode: "number" }),
+  reviewCount: integer("review_count"),
+  ratingBars: jsonb("rating_bars").$type<NonNullable<Product["ratingBars"]>>(),
+  salesRank: integer("sales_rank").notNull(),
+  addedAt: date("added_at", { mode: "string" }).notNull(),
+  related: jsonb("related").$type<string[]>(),
+  position: integer("position").notNull(),
+});
+
+/** One size of a product. A product with one size still has one of these. */
+export const variants = pgTable(
+  "product_variants",
+  {
+    productSlug: text("product_slug")
+      .notNull()
+      .references(() => products.slug, { onDelete: "cascade" }),
+    id: text("id").notNull(),
+    label: text("label").notNull(),
+    spec: text("spec").notNull(),
+    attributes: jsonb("attributes").$type<Record<string, string>>().notNull(),
+    measure: jsonb("measure").$type<Measure>(),
+    weightKg: numeric("weight_kg", { precision: 10, scale: 3, mode: "number" }).notNull(),
+    minQty: numeric("min_qty", { precision: 10, scale: 2, mode: "number" }),
+    step: numeric("step", { precision: 10, scale: 2, mode: "number" }),
+    quickQty: jsonb("quick_qty").$type<number[]>(),
+    drawing: jsonb("drawing").$type<Drawing>(),
+    position: integer("position").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.productSlug, table.id] })],
+);
+
+/** One seller's price and stock for one size. Stock has decimals because sand sells by the half cubic metre. */
+export const offers = pgTable(
+  "offers",
+  {
+    productSlug: text("product_slug").notNull(),
+    variantId: text("variant_id").notNull(),
+    sellerSlug: text("seller_slug")
+      .notNull()
+      .references(() => sellers.slug),
+    priceCentavos: integer("price_centavos").notNull(),
+    listPriceCentavos: integer("list_price_centavos"),
+    stock: numeric("stock", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    leadDays: integer("lead_days").notNull(),
+    tiers: jsonb("tiers").$type<{ from: number; priceCentavos: number }[]>(),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.productSlug, table.variantId, table.sellerSlug] }),
+    foreignKey({ name: "offers_variant_fk", columns: [table.productSlug, table.variantId], foreignColumns: [variants.productSlug, variants.id] }).onDelete("cascade"),
+    index("offers_seller_slug_idx").on(table.sellerSlug),
+    // What stops two buyers both getting the last unit: the second order's stock update fails, and takes its whole order with it.
+    check("offers_stock_not_negative", sql`${table.stock} >= 0`),
+    check("offers_price_positive", sql`${table.priceCentavos} > 0`),
+  ],
+);
+
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productSlug: text("product_slug")
+      .notNull()
+      .references(() => products.slug, { onDelete: "cascade" }),
+    author: text("author").notNull(),
+    role: text("role").notNull(),
+    rating: integer("rating").notNull(),
+    dateLabel: text("date_label").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    sellerName: text("seller_name"),
+    replyFrom: text("reply_from"),
+    replyBody: text("reply_body"),
+    position: integer("position").notNull(),
+  },
+  (table) => [index("reviews_product_slug_idx").on(table.productSlug)],
+);
 
 // ---------------------------------------------------------------------------
 // Orders. Everything an order needs is copied in when it's placed, so later

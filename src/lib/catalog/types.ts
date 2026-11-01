@@ -33,12 +33,19 @@ export type Seller = {
   awning: string;
 };
 
+/** What the browser needs to know about a seller to show their mark, rating and town. */
+export type SellerBrief = Pick<Seller, "name" | "city" | "rating" | "tint">;
+
+/** Those details by seller slug, handed to the screens that show them. */
+export type SellerDirectory = Record<string, SellerBrief>;
+
 /** A lower price per unit from a quantity upward. */
 export type PriceTier = { from: number; price: number };
 
 /** One seller's price for one size of a product. */
 export type Offer = {
   sellerSlug: string;
+  sellerName: string;
   price: number;
   listPrice?: number;
   stock: number;
@@ -91,6 +98,8 @@ export type Product = {
   unit: string;
   /** What the size buttons are called on this product. */
   sizeLabel?: string;
+  /** Which size a card and a product page open on. Middle sizes sell most, so it isn't always the first. */
+  defaultVariantId?: string;
   badge?: Badge;
   description: string;
   highlights: string[];

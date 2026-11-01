@@ -3,8 +3,7 @@ import Link from "next/link";
 import { ArrowIcon } from "@/components/home/icons";
 import { ProductCard } from "@/components/home/product-card";
 import { categories } from "@/lib/catalog/data/categories";
-import { bestSellers } from "@/lib/catalog/home-lists";
-import type { SearchEntry } from "@/lib/catalog/types";
+import type { CardData, SearchEntry } from "@/lib/catalog/types";
 import { formatPeso } from "@/lib/format";
 import { Breadcrumbs } from "./breadcrumbs";
 import "./listing.css";
@@ -13,10 +12,11 @@ type Props = {
   query: string;
   alternatives: { query: string; items: SearchEntry[] }[];
   sizeBySlug: Record<string, string>;
+  bestSellers: CardData[];
 };
 
 /** A failed search shouldn't be the end of the visit: other searches, the categories, the best sellers and a person. */
-export function NoResults({ query, alternatives }: Props) {
+export function NoResults({ query, alternatives, bestSellers }: Props) {
   const searchHref = (q: string) => `/search?q=${encodeURIComponent(q)}`;
 
   return (

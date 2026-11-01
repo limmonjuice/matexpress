@@ -9,8 +9,7 @@ import { useArrival } from "@/components/home/arrival";
 import { ArrowIcon, HeartIcon } from "@/components/home/icons";
 import { Rating } from "@/components/home/rating";
 import { defaultVariant, toLine } from "@/lib/catalog/card";
-import { sellerBySlug } from "@/lib/catalog/data/sellers";
-import type { Product, Variant } from "@/lib/catalog/types";
+import type { Product, SellerDirectory, Variant } from "@/lib/catalog/types";
 import { deliveryAreas, deliveryFee, FREE_DELIVERY_OVER } from "@/lib/delivery";
 import { discountPercent, formatPeso, plural } from "@/lib/format";
 import { formatWeight, loadFor } from "@/lib/load";
@@ -31,7 +30,7 @@ function SizeFromUrl({ onSize }: { onSize: (size: string | null) => void }) {
   return null;
 }
 
-export function ProductView({ product, specsFor, children }: { product: Product; specsFor: Record<string, string>[]; children?: React.ReactNode }) {
+export function ProductView({ product, sellers, specsFor, children }: { product: Product; sellers: SellerDirectory; specsFor: Record<string, string>[]; children?: React.ReactNode }) {
   const [variantId, setVariantId] = useState(defaultVariant(product).id);
   const variant = product.variants.find((v) => v.id === variantId) ?? defaultVariant(product);
 
@@ -220,11 +219,11 @@ export function ProductView({ product, specsFor, children }: { product: Product;
             {note && <p className="hm-qty-note">{note}</p>}
           </div>
 
-          <OfferList ranked={ranked} selected={chosen?.offer.sellerSlug} unit={product.unit} quantity={live} onSelect={setPicked} name={product.slug} />
+          <OfferList ranked={ranked} sellers={sellers} selected={chosen?.offer.sellerSlug} unit={product.unit} quantity={live} onSelect={setPicked} name={product.slug} />
 
           {picked && cheapest && chosen && cheapest !== chosen && chosen.total > cheapest.total && (
             <p className="hm-nudge">
-              {sellerBySlug(cheapest.offer.sellerSlug)?.name} would save you {formatPeso(chosen.total - cheapest.total)} at this quantity.{" "}
+              {cheapest.offer.sellerName} would save you {formatPeso(chosen.total - cheapest.total)} at this quantity.{" "}
               <button type="button" onClick={() => setPicked(cheapest.offer.sellerSlug)}>
                 Switch
               </button>
@@ -239,7 +238,7 @@ export function ProductView({ product, specsFor, children }: { product: Product;
               <ul>
                 {split.map((part) => (
                   <li key={part.offer.sellerSlug}>
-                    {part.quantity.toLocaleString("en-PH")} from {sellerBySlug(part.offer.sellerSlug)?.name}
+                    {part.quantity.toLocaleString("en-PH")} from {part.offer.sellerName}
                   </li>
                 ))}
               </ul>

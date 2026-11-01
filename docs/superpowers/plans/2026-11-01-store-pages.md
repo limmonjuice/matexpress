@@ -15,15 +15,15 @@
 Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where the build differs from the tasks below, this section is the record.
 
 **Waiting on the client:**
-- **Task 10, catalog into Neon: not done.** It needs the OK in Decision 1, which hasn't been given. Products, sellers, prices and stock stay typed sample data behind `src/lib/catalog/index.ts`. The order tables from that task were built without it.
 - **Task 14, PayMongo: not done.** It needs a PayMongo account and test keys, which only the client can create. Checkout stays simulated behind `PaymentProvider`, in `src/lib/orders/simulated-payments.ts`, and says so on the page.
 
+**Task 10, catalog into Neon: done.** Tables are `products`, `product_variants`, `offers`, `sellers` and `reviews`, replacing the old `products` table. Categories and job guides stay in code. The sample data moved to `src/db/sample/` and is only seed input. The whole catalog is one cached entry under one tag, not one per product.
+
 **Built differently:**
-- **Placing an order doesn't lower stock.** Stock lives in the sample data, so there's nothing to decrement until Task 10. The check that two buyers can't both win the last unit moves to Task 10 with it. The server still refuses a quantity above the listed stock.
+- **Placing an order lowers stock in the same batch that saves it.** A check on `offers` refuses anything below zero, so two buyers can't both win the last unit, with no `withTransaction` needed.
 - **Orders insert through `db.batch`, not `withTransaction`.** `neon-http` throws on `db.transaction`, and a batch is atomic. `src/db/tx.ts` wasn't needed.
 - **Order rules live in `src/lib/orders/`** as `rules.ts`, `price-order.ts`, `create-order.ts`, `tracking.ts`, `proof.ts`, `repo.ts`, `session.ts` and `actions.ts`, rather than the file names in Tasks 11 to 13. `canViewOrder` became `canSeeOrder` in `proof.ts`.
 - **Checkout, order and account components are fewer files** than listed: `checkout-form.tsx`, `order-view.tsx`, `order-bits.tsx`, `account-forms.tsx`.
-- **The old `products` table is untouched.** Task 10 was going to replace it.
 
 **Rendering and database:** how each page is served, the rules for new code, and the design for Task 10's caching (one tag per product, not one for the whole catalog) are in `docs/rendering-and-data.md`. `ordersForUser` became `loadAccount`, and `findOrder` is one trip.
 

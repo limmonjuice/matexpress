@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { products } from "@/db/sample/products";
 import { applyToSell, buyAgain, claimOrder, forgetBrowserOrders, lookupOrder, placeOrder, removeSite, saveSite } from "./actions";
 
 const mocks = vi.hoisted(() => ({
@@ -17,10 +18,15 @@ const mocks = vi.hoisted(() => ({
   forgetOrderAccess: vi.fn(),
   claimOrders: vi.fn(),
   consume: vi.fn(),
+  revalidateTag: vi.fn(),
+  liveProducts: vi.fn(),
+  store: { findNumberByKey: vi.fn(), insert: vi.fn(), recordPayment: vi.fn() },
   address: null as string | null,
 }));
 
+vi.mock("next/cache", () => ({ revalidateTag: mocks.revalidateTag }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("@/lib/catalog", () => ({ CATALOG_TAG: "catalog", liveProducts: mocks.liveProducts }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers(mocks.address ? { "x-forwarded-for": mocks.address } : {}) }));
 vi.mock("@/lib/throttle", () => ({ consume: mocks.consume }));
 vi.mock("./repo", () => ({
@@ -31,7 +37,7 @@ vi.mock("./repo", () => ({
   insertSite: mocks.insertSite,
   itemsForOrder: mocks.itemsForOrder,
   ordersByNumbers: mocks.ordersByNumbers,
-  orderStore: {},
+  orderStore: mocks.store,
   sitesForUser: vi.fn(),
 }));
 vi.mock("./session", () => ({
@@ -77,6 +83,40 @@ describe("placeOrder", () => {
     expect(mocks.currentUser).not.toHaveBeenCalled();
     expect(mocks.grantOrderAccess).not.toHaveBeenCalled();
   });
+
+  describe("with a good order", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.useFakeTimers({ now: new Date("2026-11-02T09:00:00+08:00"), toFake: ["Date"] });
+      mocks.liveProducts.mockResolvedValue(products);
+      mocks.store.findNumberByKey.mockResolvedValue(undefined);
+      mocks.store.insert.mockResolvedValue({ soldOut: false });
+      mocks.store.recordPayment.mockResolvedValue(undefined);
+    });
+    afterEach(() => vi.useRealTimers());
+
+    test("it's priced from live stock, only for what's being bought", async () => {
+      expect(await placeOrder(good)).toMatchObject({ kind: "placed" });
+      expect(mocks.liveProducts).toHaveBeenCalledWith(["portland-cement"]);
+    });
+
+    test("an ordinary order doesn't rebuild the store's pages", async () => {
+      await placeOrder(good);
+      expect(mocks.revalidateTag).not.toHaveBeenCalled();
+    });
+
+    test("an order that leaves a seller sold out does, so nobody is shown what's gone", async () => {
+      mocks.store.insert.mockResolvedValue({ soldOut: true });
+      await placeOrder(good);
+      expect(mocks.revalidateTag).toHaveBeenCalledWith("catalog", "max");
+    });
+
+    test("a retry that finds the order already placed rebuilds nothing", async () => {
+      mocks.store.findNumberByKey.mockResolvedValue("MX-AAAA2222");
+      expect(await placeOrder(good)).toMatchObject({ kind: "placed", number: "MX-AAAA2222", alreadyPlaced: true });
+      expect(mocks.revalidateTag).not.toHaveBeenCalled();
+    });
+  });
 });
 
 const ALLOWED = { allowed: true, retryAfter: null };
@@ -85,6 +125,7 @@ const REFUSED = { allowed: false, retryAfter: 60 };
 beforeEach(() => {
   mocks.address = null;
   mocks.consume.mockResolvedValue(ALLOWED);
+  mocks.liveProducts.mockResolvedValue(products);
 });
 
 describe("how often the public forms can be used", () => {

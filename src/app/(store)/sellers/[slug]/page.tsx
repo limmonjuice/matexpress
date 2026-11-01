@@ -60,7 +60,7 @@ async function SellerContent({ params, searchParams }: Props) {
         <div className="hm-storefront">
           <Awning colour={seller.awning} />
           <div className="hm-storefront-body">
-            <SellerMark slug={slug} name={seller.name} large />
+            <SellerMark name={seller.name} tint={seller.tint} large />
             <div className="hm-storefront-copy">
               <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Sellers" }, { label: seller.name }]} />
               <h1>{seller.name}</h1>

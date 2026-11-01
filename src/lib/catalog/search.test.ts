@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { products } from "./data/products";
+import { products } from "@/db/sample/products";
 import { alternativeQueries, buildSearchIndex, searchProducts } from "./search";
 
 const index = buildSearchIndex(products);

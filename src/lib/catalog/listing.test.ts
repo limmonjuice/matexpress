@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { products } from "./data/products";
+import { products } from "@/db/sample/products";
 import { BATCH, listingHref, parseListingParams, queryProducts, sellerFacts } from "./listing";
 
 const params = (raw = {}, defaultSort: "best" | "relevance" = "best") => parseListingParams(raw, { defaultSort });
@@ -171,6 +171,14 @@ describe("listingHref", () => {
 
   test("special characters are encoded", () => {
     expect(listingHref("/c", params(), { toggle: { key: "size", value: '4"' } })).toBe("/c?size=4%22");
+  });
+});
+
+describe("the seller filter", () => {
+  test("lists each seller once, by name", () => {
+    const seller = queryProducts(products, {}, params()).facets.find((facet) => facet.key === "seller")!;
+    const labels = seller.values.map((value) => value.label);
+    expect(labels).toEqual(["Bakal Supply", "Bato Aggregates", "Dalisay Hardware", "Kahoy Lumber", "Liwanag Hardware", "Tibay Steel"]);
   });
 });
 

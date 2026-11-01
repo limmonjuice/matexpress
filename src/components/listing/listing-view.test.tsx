@@ -2,7 +2,7 @@ import { Suspense, use, useState } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { products } from "@/lib/catalog/data/products";
+import { products } from "@/db/sample/products";
 import { parseListingParams, queryProducts, type ListingScope } from "@/lib/catalog/listing";
 import { ListingView } from "./listing-view";
 

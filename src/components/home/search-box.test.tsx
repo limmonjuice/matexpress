@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { products } from "@/lib/catalog/data/products";
+import { products } from "@/db/sample/products";
 import { buildSearchIndex } from "@/lib/catalog/search";
 
 const push = vi.fn();

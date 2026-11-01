@@ -5,14 +5,18 @@ import { ProductSections } from "@/components/home/product-sections";
 import { PromoPanels } from "@/components/home/promo-panels";
 import { ServiceStrip } from "@/components/home/service-strip";
 import { TrustStrip } from "@/components/home/trust-strip";
+import { listProducts } from "@/lib/catalog";
+import { homeLists } from "@/lib/catalog/home-lists";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { heroProducts, newArrivals, bestSellers } = homeLists(await listProducts());
+
   return (
     <>
-      <Hero />
+      <Hero products={heroProducts} />
       <ServiceStrip />
       <CategoryGrid />
-      <ProductSections />
+      <ProductSections newArrivals={newArrivals} bestSellers={bestSellers} />
       <PromoPanels />
       <TrustStrip />
       <HomeMotion />
