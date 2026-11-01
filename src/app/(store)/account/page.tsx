@@ -8,7 +8,7 @@ import "@/components/checkout/checkout.css";
 import "@/components/orders/orders.css";
 import { formatDay } from "@/lib/delivery";
 import { formatPeso } from "@/lib/format";
-import { ordersByNumbers, ordersForUser, sitesForUser } from "@/lib/orders/repo";
+import { ACCOUNT_ORDER_LIMIT, loadAccount } from "@/lib/orders/repo";
 import { formatMobile } from "@/lib/orders/rules";
 import { currentUser, provenOrders } from "@/lib/orders/session";
 
@@ -52,9 +52,8 @@ async function AccountContent({ searchParams }: { searchParams: Promise<RawParam
     );
   }
 
-  const [orders, sites, proven] = await Promise.all([ordersForUser(user.id), sitesForUser(user.id), provenOrders()]);
-  // Placed from this browser without an account. They might be someone else's, so they only join when asked.
-  const unclaimed = (await ordersByNumbers(proven)).filter((order) => !order.userId);
+  // `unclaimed`: placed from this browser without an account. They might be someone else's, so they only join when asked.
+  const { orders, sites, unclaimed } = await loadAccount(user.id, await provenOrders());
 
   return (
     <div className="hm-frame hm-account">
@@ -90,6 +89,7 @@ async function AccountContent({ searchParams }: { searchParams: Promise<RawParam
                 ))}
               </ul>
             )}
+            {orders.length === ACCOUNT_ORDER_LIMIT && <p className="hm-account-empty">Showing your latest {ACCOUNT_ORDER_LIMIT} orders.</p>}
           </section>
 
           {unclaimed.length > 0 && (

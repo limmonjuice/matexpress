@@ -92,7 +92,7 @@ async function SellerContent({ params, searchParams }: Props) {
             </dl>
           </div>
           <p className="hm-storefront-note">
-            Our trucks collect from {seller.name} and everyone else in your order, so you still pay once. <Link href="/how-it-works">How it works</Link>
+            Our trucks collect from {seller.name} and everyone else in your order, so you still pay once. <Link href="/how-it-works" prefetch={false}>How it works</Link>
           </p>
         </div>
       </section>

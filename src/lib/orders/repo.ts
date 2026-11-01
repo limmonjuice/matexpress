@@ -43,24 +43,50 @@ export const orderStore: OrderStore = {
 };
 
 export async function findOrder(number: string) {
-  const [order] = await db.select().from(orders).where(eq(orders.number, number)).limit(1);
-  if (!order) return undefined;
-  const [items, events] = await Promise.all([
-    db.select().from(orderItems).where(eq(orderItems.orderId, order.id)),
-    db.select().from(orderEvents).where(eq(orderEvents.orderId, order.id)),
+  const thisOrder = db.select({ id: orders.id }).from(orders).where(eq(orders.number, number));
+  // One batch is one trip to the database, however many queries are in it.
+  const [[order], items, events] = await db.batch([
+    db.select().from(orders).where(eq(orders.number, number)).limit(1),
+    db.select().from(orderItems).where(inArray(orderItems.orderId, thisOrder)),
+    db.select().from(orderEvents).where(inArray(orderEvents.orderId, thisOrder)),
   ]);
+  if (!order) return undefined;
   return { order, items, events };
 }
 
 export type LoadedOrder = NonNullable<Awaited<ReturnType<typeof findOrder>>>;
 
+/** What a list of orders shows. The mobile, notes and the rest stay put until someone opens the order. */
+const orderSummary = {
+  id: orders.id,
+  number: orders.number,
+  userId: orders.userId,
+  street: orders.street,
+  area: orders.area,
+  deliveryDate: orders.deliveryDate,
+  totalCentavos: orders.totalCentavos,
+};
+
 export async function ordersByNumbers(numbers: string[]) {
   if (!numbers.length) return [];
-  return db.select().from(orders).where(inArray(orders.number, numbers)).orderBy(desc(orders.createdAt));
+  return db.select(orderSummary).from(orders).where(inArray(orders.number, numbers)).orderBy(desc(orders.createdAt));
 }
 
-export async function ordersForUser(userId: string) {
-  return db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
+/** Years of weekly orders, and a limit on how much one page can ever ask for. */
+export const ACCOUNT_ORDER_LIMIT = 100;
+
+/** Everything the account page lists, in one trip. Orders from this browser only count if no one owns them yet. */
+export async function loadAccount(userId: string, proven: string[]) {
+  const [ownOrders, ownSites, unclaimed] = await db.batch([
+    db.select(orderSummary).from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt)).limit(ACCOUNT_ORDER_LIMIT),
+    db.select().from(sites).where(eq(sites.userId, userId)).orderBy(desc(sites.createdAt)),
+    db
+      .select(orderSummary)
+      .from(orders)
+      .where(and(inArray(orders.number, proven), isNull(orders.userId)))
+      .orderBy(desc(orders.createdAt)),
+  ]);
+  return { orders: ownOrders, sites: ownSites, unclaimed };
 }
 
 export async function itemsForOrder(orderId: string) {

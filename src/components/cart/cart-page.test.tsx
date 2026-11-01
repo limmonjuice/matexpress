@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toLine } from "@/lib/catalog/card";
@@ -34,6 +34,16 @@ async function show(lines: CartLine[]) {
 describe("CartPage", () => {
   beforeEach(() => {
     usePreferences.setState({ area: "Rizal", saved: [] });
+  });
+
+  test("until the saved cart has loaded it shows only the title, so nothing wrong appears and nothing jumps", () => {
+    const loaded = vi.spyOn(useCartStore.persist, "hasHydrated").mockReturnValue(false);
+    render(<CartPage products={products} />);
+    expect(screen.getByRole("heading", { name: "Your cart" })).toBeInTheDocument();
+    expect(screen.queryByText(/₱/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/your truck is empty/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Order summary" })).not.toBeInTheDocument();
+    loaded.mockRestore();
   });
 
   test("groups the cart by seller, the way the truck collects it", async () => {

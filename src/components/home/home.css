@@ -1556,6 +1556,10 @@ button:hover > .hm-arrow {
   background: var(--hm-dark);
   color: #f5f2ec;
 }
+/* While a page is still waiting for its contents, the footer doesn't know where it belongs. Hidden, it can't be seen jumping. */
+.hm:has(.hm-main [aria-busy="true"]) .hm-footer {
+  visibility: hidden;
+}
 .hm-footer-top {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) repeat(3, minmax(0, 1fr));

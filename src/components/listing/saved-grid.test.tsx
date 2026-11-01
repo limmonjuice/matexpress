@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toCard } from "@/lib/catalog/card";
@@ -20,6 +20,14 @@ describe("SavedGrid", () => {
   beforeEach(() => {
     useCartStore.setState({ lines: [], isOpen: false });
     usePreferences.setState({ saved: [], area: "Rizal" });
+  });
+
+  test("until the list has loaded it shows nothing, rather than a count or an empty message that would jump", () => {
+    const loaded = vi.spyOn(usePreferences.persist, "hasHydrated").mockReturnValue(false);
+    render(<SavedGrid cards={cards} />);
+    expect(screen.queryByText(/saved item/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Nothing saved yet" })).not.toBeInTheDocument();
+    loaded.mockRestore();
   });
 
   test("shows only what's saved", async () => {

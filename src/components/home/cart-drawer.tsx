@@ -19,6 +19,9 @@ export function CartDrawer() {
   const setQuantity = useCartStore((s) => s.setQuantity);
   const remove = useCartStore((s) => s.remove);
   const [notes, setNotes] = useState<Record<string, string | undefined>>({});
+  // Its contents wait for the first open. Closed, its links would still be prefetched and its photos loaded, on every page.
+  const [everOpened, setEverOpened] = useState(isOpen);
+  if (isOpen && !everOpened) setEverOpened(true);
 
   const total = cartTotal(lines);
   const toFree = FREE_DELIVERY_OVER - total;
@@ -52,7 +55,7 @@ export function CartDrawer() {
           </button>
         </div>
 
-        {lines.length === 0 ? (
+        {!everOpened ? null : lines.length === 0 ? (
           <div className="hm-cart-empty">
             <LoadTruck lines={[]} className="hm-truck hm-truck--empty" />
             <p>Your truck is empty. Load it from any seller, and check out once.</p>

@@ -6,6 +6,9 @@ import "./listing.css";
 
 const SORTS: SortKey[] = ["best", "price-asc", "price-desc", "rating", "new"];
 
+/** A desktop row, or about a phone's first screen. */
+const FIRST_SCREEN_CARDS = 4;
+
 type Props = {
   pathname: string;
   scope: ListingScope;
@@ -33,7 +36,7 @@ export async function Listing({ pathname, scope, rawParams, defaultSort = "best"
     <ListingView pathname={pathname} params={params} result={rest} shown={items.length} sorts={[...extraSorts, ...SORTS]}>
       {items.map((product, i) => (
         <li key={product.slug} style={{ "--hm-i": i % 12 } as React.CSSProperties}>
-          <ProductCard product={product} />
+          <ProductCard product={product} eager={i < FIRST_SCREEN_CARDS} />
         </li>
       ))}
     </ListingView>

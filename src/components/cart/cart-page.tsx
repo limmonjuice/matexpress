@@ -47,7 +47,17 @@ export function CartPage({ products }: { products: Product[] }) {
     return persist?.onFinishHydration(check);
   }, [products, setLines]);
 
-  if (hydrated && lines.length === 0) return <EmptyCart />;
+  // Nothing true can be shown until the saved cart has loaded, and an empty one would jump when the real one arrives.
+  if (!hydrated) {
+    return (
+      <div className="hm-cartpage" aria-busy="true">
+        <section className="hm-frame hm-cart-wait">
+          <h1 className="hm-cart-title">Your cart</h1>
+        </section>
+      </div>
+    );
+  }
+  if (lines.length === 0) return <EmptyCart />;
 
   const total = cartTotal(lines);
   const fee = deliveryFee(area, total);

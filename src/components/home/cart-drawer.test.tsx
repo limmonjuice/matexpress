@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toLine } from "@/lib/catalog/card";
 import { productBySlug } from "@/lib/catalog/data/products";
@@ -22,6 +22,19 @@ async function typeQuantity(value: string) {
 describe("CartDrawer", () => {
   beforeEach(() => {
     useCartStore.setState({ lines: [{ ...toLine(rebar, twelve, bakal), quantity: 1 }], isOpen: true });
+  });
+
+  test("closed, it holds no links or photos for the page to prefetch, until it's first opened", async () => {
+    useCartStore.setState({ isOpen: false });
+    const { container } = render(<CartDrawer />);
+    expect(container.querySelectorAll("a, img")).toHaveLength(0);
+
+    act(() => useCartStore.getState().open());
+    expect(screen.getByRole("link", { name: /check out/i })).toHaveAttribute("href", "/checkout");
+
+    // Stays filled once opened, so it can slide away with its contents in place.
+    act(() => useCartStore.getState().close());
+    expect(container.querySelector('a[href="/checkout"]')).toBeInTheDocument();
   });
 
   test("a typed quantity sticks, and the subtotal moves to the volume price", async () => {

@@ -8,14 +8,15 @@ import { TruckIcon, VerifiedIcon } from "./icons";
 import { Rating } from "./rating";
 import { SaveButton } from "./save-button";
 
-export function ProductCard({ product, hideBadge }: { product: CardData; hideBadge?: CardData["badge"] }) {
+/** `eager`: on the first screen, so the browser fetches its photo right away instead of waiting to see it's in view. */
+export function ProductCard({ product, hideBadge, eager }: { product: CardData; hideBadge?: CardData["badge"]; eager?: boolean }) {
   const off = product.listPrice ? discountPercent(product.listPrice, product.price) : 0;
   const badge = product.badge === hideBadge ? undefined : product.badge;
 
   return (
     <article className="hm-card">
       <div className="hm-card-media">
-        <Image src={product.image} alt="" fill sizes="(max-width: 699px) 112px, (max-width: 1179px) 30vw, 280px" />
+        <Image src={product.image} alt="" fill sizes="(max-width: 699px) 112px, (max-width: 1179px) 30vw, 280px" loading={eager ? "eager" : undefined} />
         {badge && <span className={`hm-badge hm-badge--${badge.toLowerCase()}`}>{badge}</span>}
         <SaveButton slug={product.slug} name={product.name} />
       </div>

@@ -1127,6 +1127,10 @@
 .hm-products--saved {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
+/* A full screen, so the footer starts below the fold and doesn't jump when the list arrives. */
+.hm-saved-wait {
+  min-height: 100vh;
+}
 .hm-saved-none {
   display: grid;
   justify-items: center;

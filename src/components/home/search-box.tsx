@@ -13,15 +13,37 @@ import { ArrowIcon, SearchIcon } from "./icons";
 const searchHref = (query: string) => `/search?q=${encodeURIComponent(query)}`;
 const productLink = (slug: string, size?: string) => `/products/${slug}${size ? `?size=${size}` : ""}`;
 
-export function SearchBox({ index }: { index: SearchEntry[] }) {
+let indexRequest: Promise<SearchEntry[]> | undefined;
+
+/** Comes down once, the first time someone goes to search, rather than inside every page. */
+function loadSearchIndex() {
+  indexRequest ??= fetch("/api/search-index")
+    .then((res) => {
+      if (!res.ok) throw new Error(`The search index answered ${res.status}`);
+      return res.json() as Promise<SearchEntry[]>;
+    })
+    .catch((error) => {
+      indexRequest = undefined; // The next try can ask again.
+      throw error;
+    });
+  return indexRequest;
+}
+
+export function SearchBox() {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const [index, setIndex] = useState<SearchEntry[]>();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
   const trimmed = query.trim();
-  const { items: results, sizeBySlug } = useMemo(() => searchProducts(index, trimmed), [index, trimmed]);
+  const { items: results, sizeBySlug } = useMemo(() => searchProducts(index ?? [], trimmed), [index, trimmed]);
+
+  // Without it the box still works: pressing enter or "Search all materials" asks the search page instead.
+  const wantIndex = () => {
+    if (!index) loadSearchIndex().then(setIndex, () => {});
+  };
 
   // Close when a press lands anywhere outside the search.
   useEffect(() => {
@@ -66,8 +88,12 @@ export function SearchBox({ index }: { index: SearchEntry[] }) {
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
+          wantIndex();
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setOpen(true);
+          wantIndex();
+        }}
       />
       <button type="submit" className="hm-search-go">
         Search
@@ -117,7 +143,7 @@ export function SearchBox({ index }: { index: SearchEntry[] }) {
           </ul>
         )}
 
-        {trimmed && results.length === 0 && <p className="hm-search-empty">No quick matches for “{trimmed}”.</p>}
+        {trimmed && index && results.length === 0 && <p className="hm-search-empty">No quick matches for “{trimmed}”.</p>}
 
         {trimmed && (
           <Link href={searchHref(trimmed)} className="hm-search-all" onClick={() => setOpen(false)}>

@@ -25,6 +25,8 @@ Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where
 - **Checkout, order and account components are fewer files** than listed: `checkout-form.tsx`, `order-view.tsx`, `order-bits.tsx`, `account-forms.tsx`.
 - **The old `products` table is untouched.** Task 10 was going to replace it.
 
+**Rendering and database:** how each page is served, the rules for new code, and the design for Task 10's caching (one tag per product, not one for the whole catalog) are in `docs/rendering-and-data.md`. `ordersForUser` became `loadAccount`, and `findOrder` is one trip.
+
 **Changed after the independent review:**
 - **The order is saved before any charge,** as `pending`, then the payment is recorded. A failed save never charges, and two requests with one key charge once. Task 14 builds on this order.
 - **The retry key lives in `sessionStorage` with a fingerprint of the order,** so a reply lost on a bad connection can't become a second order after a refresh, and a changed order is never answered with the old one.

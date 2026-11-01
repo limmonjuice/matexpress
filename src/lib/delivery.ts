@@ -1,5 +1,7 @@
 // How MatExpress delivers. Sample terms: confirm the fees, areas and cut-off before launch.
 
+import { lazily } from "./format";
+
 export const deliveryAreas = ["Metro Manila", "Rizal", "Cavite", "Laguna", "Bulacan"];
 
 export const DEFAULT_AREA = "Rizal";
@@ -23,9 +25,9 @@ const FEES: Record<string, number> = {
 
 const EXTRA_DAYS: Record<string, number> = { Cavite: 1, Laguna: 1, Bulacan: 1 };
 
-const hourFormat = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hour: "numeric", hourCycle: "h23" });
-const dayFormat = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, weekday: "short", month: "short", day: "numeric" });
-const keyFormat = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+const hourFormat = lazily(() => new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hour: "numeric", hourCycle: "h23" }));
+const dayFormat = lazily(() => new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, weekday: "short", month: "short", day: "numeric" }));
+const keyFormat = lazily(() => new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }));
 
 export const areaFee = (area: string) => (Object.hasOwn(FEES, area) ? FEES[area] : 1000);
 
@@ -35,16 +37,16 @@ export function deliveryFee(area: string, subtotal: number) {
 }
 
 export function arrivalDate(now: Date, leadDays: number, area: string): Date {
-  const afterCutoff = Number(hourFormat.format(now)) >= CUTOFF_HOUR;
+  const afterCutoff = Number(hourFormat().format(now)) >= CUTOFF_HOUR;
   const days = leadDays + (afterCutoff ? 1 : 0) + (Object.hasOwn(EXTRA_DAYS, area) ? EXTRA_DAYS[area] : 0);
   return new Date(now.getTime() + days * DAY_MS);
 }
 
 /** "Tue, Nov 3", on the Manila calendar whatever the browser's zone. */
-export const formatDay = (date: Date) => dayFormat.format(date);
+export const formatDay = (date: Date) => dayFormat().format(date);
 
 /** "2026-11-03" on the Manila calendar, for comparing days and for order records. */
-export const dayKey = (date: Date) => keyFormat.format(date);
+export const dayKey = (date: Date) => keyFormat().format(date);
 
 /** "today", "tomorrow" or the date: dates, not speeds, but nobody needs today's date read back to them. */
 export function arrivalText(now: Date, leadDays: number, area: string) {
@@ -77,6 +79,6 @@ export const WINDOW_NOTICE_HOURS = 3;
 /** The windows that can still be met on a day. Later days have them all; today's close before they end. */
 export function openWindows(deliveryDate: string, now: Date) {
   if (deliveryDate !== dayKey(now)) return DELIVERY_WINDOWS;
-  const hour = Number(hourFormat.format(now));
+  const hour = Number(hourFormat().format(now));
   return DELIVERY_WINDOWS.filter((window) => WINDOW_END_HOUR[window] - hour > WINDOW_NOTICE_HOURS);
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { getSessionCookie } from "better-auth/cookies";
 import { cookies, headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { readProof, signProof } from "./proof";
@@ -15,6 +16,11 @@ const secret = () => {
 export async function currentUser() {
   const session = await auth.api.getSession({ headers: await headers() });
   return session?.user;
+}
+
+/** Whether this browser sends a session cookie at all. It says nothing about who's signed in, only that `currentUser` is worth asking. */
+export async function mightBeSignedIn() {
+  return getSessionCookie(await headers()) !== null;
 }
 
 export async function provenOrders() {

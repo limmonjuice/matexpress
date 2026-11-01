@@ -20,7 +20,7 @@ export function SiteFooter() {
               <ul>
                 {column.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} prefetch={link.href === "/how-it-works" ? false : undefined}>
+                    <Link href={link.href} prefetch={link.href === "/how-it-works" || link.href === "/saved" ? false : undefined}>
                       {link.label}
                     </Link>
                   </li>

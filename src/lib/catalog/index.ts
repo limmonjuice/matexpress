@@ -49,7 +49,7 @@ export async function getReviews(slug: string) {
 
 const searchIndex = buildSearchIndex(products);
 
-/** The slim list the header's search box runs on in the browser. */
+/** The slim list the search page and, through /api/search-index, the header's search box run on. */
 export async function getSearchIndex(): Promise<SearchEntry[]> {
   return searchIndex;
 }

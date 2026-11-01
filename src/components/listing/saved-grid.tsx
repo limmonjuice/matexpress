@@ -32,7 +32,10 @@ export function SavedGrid({ cards }: { cards: CardData[] }) {
     setTimeout(() => setCopied(false), 1800);
   };
 
-  if (hydrated && items.length === 0) {
+  // The list isn't known until it has loaded, and a guess would jump when the real one arrives.
+  if (!hydrated) return <div className="hm-saved-wait" aria-busy="true" />;
+
+  if (items.length === 0) {
     return (
       <div className="hm-saved-none hm-arrive">
         <HeartIcon />

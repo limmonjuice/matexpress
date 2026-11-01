@@ -12,7 +12,8 @@ import { PAYMENT_METHODS, TRUCK_ACCESS, formatMobile } from "@/lib/orders/rules"
 import { demoEvents, demoTimelineOn, STAGES, trackingView, type EventType } from "@/lib/orders/tracking";
 import type { CartLine } from "@/stores/cart-store";
 import { ClaimOrderButton } from "@/components/account/account-forms";
-import { BuyAgainButton, CopyNumber, CreateAccountOffer, LiveRefresh } from "./order-bits";
+import { CreateAccountOffer } from "./create-account-offer";
+import { BuyAgainButton, CopyNumber, LiveRefresh } from "./order-bits";
 import "./orders.css";
 
 const peso = (centavos: number) => formatPeso(centavos / 100);

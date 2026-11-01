@@ -68,7 +68,19 @@ export function Checkout() {
     if (cartReady && count === 0 && !placed.current) router.replace("/cart");
   }, [cartReady, count, router]);
 
-  if (!cartReady || !preferencesReady || count === 0) return <div className="hm-co-wait" aria-busy="true" />;
+  const loading = !cartReady || !preferencesReady;
+  if (loading || count === 0) {
+    return (
+      <div className="hm-co hm-co-wait" aria-busy="true">
+        {/* A cart known to be empty is on its way back to the cart page, so this is no longer checkout. */}
+        {loading && (
+          <div className="hm-co-main">
+            <h1>Check out</h1>
+          </div>
+        )}
+      </div>
+    );
+  }
   return <CheckoutForm onPlaced={() => (placed.current = true)} />;
 }
 

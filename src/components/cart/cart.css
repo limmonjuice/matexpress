@@ -7,6 +7,10 @@
   line-height: 1.05;
   letter-spacing: -0.035em;
 }
+/* A full screen, so the footer starts below the fold and doesn't jump when the cart arrives. */
+.hm-cart-wait {
+  min-height: 100vh;
+}
 
 /* The load, as the truck will carry it. */
 .hm-load {

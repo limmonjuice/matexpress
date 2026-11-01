@@ -33,8 +33,9 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+/* A full screen, so the footer starts below the fold and doesn't jump when the form arrives. */
 .hm-co-wait {
-  min-height: 70vh;
+  min-height: 100vh;
 }
 .hm-co {
   display: grid;

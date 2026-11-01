@@ -13,6 +13,8 @@ const LINKS = [
   { label: "Sell on MatExpress", href: "/sell" },
 ];
 
+const NEVER_PREFETCHED = ["/account", "/how-it-works"];
+
 export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const panel = useRef<HTMLDivElement>(null);
 
@@ -69,7 +71,8 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
           ))}
           <div className="hm-drawer-links">
             {LINKS.map((link) => (
-              <Link key={link.href} href={link.href} onClick={onClose}>
+              // A closed drawer is still in the page, so its links would otherwise be fetched on every page view.
+              <Link key={link.href} href={link.href} prefetch={open && !NEVER_PREFETCHED.includes(link.href) ? "auto" : false} onClick={onClose}>
                 {link.label}
               </Link>
             ))}

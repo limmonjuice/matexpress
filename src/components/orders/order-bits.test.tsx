@@ -4,12 +4,87 @@ import userEvent from "@testing-library/user-event";
 import { toLine } from "@/lib/catalog/card";
 import { productBySlug } from "@/lib/catalog/data/products";
 import { useCartStore } from "@/stores/cart-store";
-import { BuyAgainButton, CreateAccountOffer, ForgetOrdersButton, TrackForm } from "./order-bits";
+import { CreateAccountOffer } from "./create-account-offer";
+import { BuyAgainButton, ForgetOrdersButton, LiveRefresh, TrackForm } from "./order-bits";
 
 const mocks = vi.hoisted(() => ({ lookupOrder: vi.fn(), buyAgain: vi.fn(), claimOrder: vi.fn(), forgetBrowserOrders: vi.fn(), signUp: vi.fn(), refresh: vi.fn(), assign: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 vi.mock("@/lib/auth-client", () => ({ authClient: { signUp: { email: mocks.signUp } } }));
 vi.mock("@/lib/orders/actions", () => ({ lookupOrder: mocks.lookupOrder, buyAgain: mocks.buyAgain, claimOrder: mocks.claimOrder, forgetBrowserOrders: mocks.forgetBrowserOrders }));
+
+describe("LiveRefresh", () => {
+  const MINUTE = 60_000;
+  let hidden = false;
+  const setHidden = (value: boolean) => {
+    hidden = value;
+    document.dispatchEvent(new Event("visibilitychange"));
+  };
+  const spy = vi.spyOn(document, "hidden", "get");
+
+  beforeEach(() => {
+    hidden = false;
+    spy.mockImplementation(() => hidden);
+    mocks.refresh.mockReset();
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    spy.mockReset();
+  });
+
+  test("asks again each minute while the page is on screen", () => {
+    render(<LiveRefresh stop={false} />);
+    vi.advanceTimersByTime(MINUTE - 1);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+  });
+
+  test("a hidden tab never asks, however long it's left", () => {
+    render(<LiveRefresh stop={false} />);
+    setHidden(true);
+    vi.advanceTimersByTime(24 * 60 * MINUTE);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  test("a tab opened in the background waits until someone looks at it", () => {
+    hidden = true;
+    render(<LiveRefresh stop={false} />);
+    vi.advanceTimersByTime(10 * MINUTE);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    setHidden(false);
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+  });
+
+  test("coming back catches up at once, then carries on from there", () => {
+    render(<LiveRefresh stop={false} />);
+    vi.advanceTimersByTime(MINUTE / 2);
+    setHidden(true);
+    setHidden(false);
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+    vi.advanceTimersByTime(MINUTE - 1);
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+    vi.advanceTimersByTime(1);
+    expect(mocks.refresh).toHaveBeenCalledTimes(2);
+  });
+
+  test("a delivered order never asks", () => {
+    render(<LiveRefresh stop />);
+    vi.advanceTimersByTime(10 * MINUTE);
+    setHidden(true);
+    setHidden(false);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  test("leaving the page stops it", () => {
+    const { unmount } = render(<LiveRefresh stop={false} />);
+    unmount();
+    vi.advanceTimersByTime(10 * MINUTE);
+    setHidden(true);
+    setHidden(false);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+});
 
 describe("TrackForm", () => {
   beforeEach(() => mocks.lookupOrder.mockReset());

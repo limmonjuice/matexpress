@@ -4,9 +4,7 @@ import { TrackForm } from "@/components/orders/order-bits";
 import { OrderView } from "@/components/orders/order-view";
 import "@/components/checkout/checkout.css";
 import "@/components/orders/orders.css";
-import { canSeeOrder } from "@/lib/orders/proof";
-import { findOrder } from "@/lib/orders/repo";
-import { currentUser, provenOrders } from "@/lib/orders/session";
+import { openOrder } from "@/lib/orders/open-order";
 
 export const metadata: Metadata = {
   title: "Your order | MatExpress",
@@ -29,10 +27,10 @@ export default function OrderPage(props: Props) {
 async function OrderContent({ params, searchParams }: Props) {
   const number = (await params).number.toUpperCase();
   const { placed } = await searchParams;
-  const [found, user, proven] = await Promise.all([findOrder(number), currentUser(), provenOrders()]);
+  const { found, user } = await openOrder(number);
 
   // The same page whether the number is wrong or just not proven: a guess learns nothing.
-  if (!found || !canSeeOrder(found.order, proven, user)) {
+  if (!found) {
     return (
       <div className="hm-frame hm-trackpage hm-arrive">
         <div>

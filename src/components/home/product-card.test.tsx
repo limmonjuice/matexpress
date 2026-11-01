@@ -18,6 +18,14 @@ describe("ProductCard", () => {
     usePreferences.setState({ saved: [], area: "Rizal" });
   });
 
+  test("only a card on the first screen fetches its photo right away", () => {
+    const { container, unmount } = render(<ProductCard product={cement} eager />);
+    expect(container.querySelector("img")).toHaveAttribute("loading", "eager");
+    unmount();
+    const later = render(<ProductCard product={cement} />);
+    expect(later.container.querySelector("img")).toHaveAttribute("loading", "lazy");
+  });
+
   test("shows the price, the old price and the discount", () => {
     render(<ProductCard product={cement} />);
     expect(screen.getByText("₱252")).toBeInTheDocument();

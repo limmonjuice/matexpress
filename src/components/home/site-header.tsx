@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import gsap from "gsap";
 import { quickCategories } from "@/lib/catalog/data/categories";
-import type { SearchEntry } from "@/lib/catalog/types";
 import { plural } from "@/lib/format";
 import { cartCount, useCartStore } from "@/stores/cart-store";
 import { usePreferences } from "@/stores/preferences-store";
@@ -15,7 +13,7 @@ import { HeartIcon, MenuIcon, TruckIcon, UserIcon, CartIcon } from "./icons";
 import { MobileMenu } from "./mobile-menu";
 import { SearchBox } from "./search-box";
 
-export function SiteHeader({ searchIndex }: { searchIndex: SearchEntry[] }) {
+export function SiteHeader() {
   const badge = useRef<HTMLSpanElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -28,7 +26,12 @@ export function SiteHeader({ searchIndex }: { searchIndex: SearchEntry[] }) {
 
   useEffect(() => {
     if (!lastAddedAt || !badge.current) return;
-    gsap.fromTo(badge.current, { scale: 1.7 }, { scale: 1, duration: 0.6, ease: "elastic.out(1, 0.45)" });
+    const count = badge.current;
+    // Fetched when it's needed: the header is on every page, and this pop is all it uses GSAP for.
+    import("gsap").then(
+      ({ default: gsap }) => gsap.fromTo(count, { scale: 1.7 }, { scale: 1, duration: 0.6, ease: "elastic.out(1, 0.45)" }),
+      () => {},
+    );
   }, [lastAddedAt]);
 
   return (
@@ -42,17 +45,18 @@ export function SiteHeader({ searchIndex }: { searchIndex: SearchEntry[] }) {
             MatExpress
           </Link>
           <DeliverTo className="hm-deliver--header" />
-          <SearchBox index={searchIndex} />
+          <SearchBox />
           <nav className="hm-actions" aria-label="Your account">
             <Link href="/track" className="hm-action hm-action--track">
               <TruckIcon />
               Track order
             </Link>
-            <Link href="/saved" className="hm-action hm-action--icon" aria-label={`Saved items, ${savedCount}`}>
+            {/* In every page's header, so what they prefetch every visitor pays for: the saved list only once there's a list, and the account page never, as it has nothing to show before it reads the session. */}
+            <Link href="/saved" prefetch={savedCount > 0 ? "auto" : false} className="hm-action hm-action--icon" aria-label={`Saved items, ${savedCount}`}>
               <HeartIcon />
               {savedCount > 0 && <span className="hm-action-count">{savedCount}</span>}
             </Link>
-            <Link href="/account" className="hm-action hm-action--icon hm-action--account" aria-label="Account">
+            <Link href="/account" prefetch={false} className="hm-action hm-action--icon hm-action--account" aria-label="Account">
               <UserIcon />
             </Link>
             <button type="button" className="hm-cart-btn" onClick={openCart} aria-label={`Cart, ${plural(count, "item")}`}>
