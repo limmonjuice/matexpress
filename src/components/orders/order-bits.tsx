@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowIcon, CheckIcon } from "@/components/home/icons";
 import { authClient } from "@/lib/auth-client";
 import { buyAgain, claimOrder, forgetBrowserOrders, lookupOrder } from "@/lib/orders/actions";
-import { CONNECTION_ERROR, friendlyAuthError } from "@/lib/orders/rules";
+import { CONNECTION_ERROR, friendlyAuthError, PASSWORD_HINT } from "@/lib/orders/rules";
 import { useCartStore } from "@/stores/cart-store";
 
 export function CopyNumber({ number }: { number: string }) {
@@ -176,7 +176,7 @@ export function CreateAccountOffer({ name, number }: { name: string; number: str
       <div className="hm-co-field">
         <label htmlFor="hm-offer-password">Choose a password</label>
         <input id="hm-offer-password" type="password" autoComplete="new-password" minLength={8} aria-describedby="hm-offer-password-rule" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <small id="hm-offer-password-rule">At least 8 characters.</small>
+        <small id="hm-offer-password-rule">{PASSWORD_HINT}</small>
       </div>
       {error && (
         <p className="hm-co-error" role="alert">

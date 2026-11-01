@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AddSiteForm, AuthForms, ClaimOrderButton, RemoveSiteButton, SignOutButton } from "@/components/account/account-forms";
+import { AddSiteForm, AuthForms, ChangePasswordForm, ClaimOrderButton, DeleteAccountForm, RemoveSiteButton, SignOutButton } from "@/components/account/account-forms";
 import { CheckIcon } from "@/components/home/icons";
 import { BuyAgainButton } from "@/components/orders/order-bits";
 import "@/components/checkout/checkout.css";
@@ -113,27 +113,35 @@ async function AccountContent({ searchParams }: { searchParams: Promise<RawParam
           )}
         </div>
 
-        <section aria-labelledby="hm-account-sites">
-          <h2 id="hm-account-sites">Your sites</h2>
-          {sites.length > 0 && (
-            <ul className="hm-sitelist">
-              {sites.map((site) => (
-                <li key={site.id}>
-                  <span>
-                    <b>{site.street}</b>
-                    <small>
-                      {site.city}, {site.area}
-                      <br />
-                      {site.contactName}, {formatMobile(site.mobile)}
-                    </small>
-                  </span>
-                  <RemoveSiteButton id={site.id} label={site.street} />
-                </li>
-              ))}
-            </ul>
-          )}
-          <AddSiteForm name={user.name} />
-        </section>
+        <div>
+          <section aria-labelledby="hm-account-sites">
+            <h2 id="hm-account-sites">Your sites</h2>
+            {sites.length > 0 && (
+              <ul className="hm-sitelist">
+                {sites.map((site) => (
+                  <li key={site.id}>
+                    <span>
+                      <b>{site.street}</b>
+                      <small>
+                        {site.city}, {site.area}
+                        <br />
+                        {site.contactName}, {formatMobile(site.mobile)}
+                      </small>
+                    </span>
+                    <RemoveSiteButton id={site.id} label={site.street} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <AddSiteForm name={user.name} />
+          </section>
+
+          <section className="hm-account-security" aria-labelledby="hm-account-security">
+            <h2 id="hm-account-security">Password and account</h2>
+            <ChangePasswordForm />
+            <DeleteAccountForm />
+          </section>
+        </div>
       </div>
     </div>
   );

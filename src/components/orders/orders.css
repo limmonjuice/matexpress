@@ -474,6 +474,29 @@
 .hm-unclaimed {
   margin-top: 20px;
 }
+.hm-account-security {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 24px;
+}
+.hm-account-security .hm-siteform {
+  justify-self: stretch;
+}
+.hm-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hm-account-done {
+  color: var(--hm-ink-soft);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.hm-account-warning {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
 .hm-forget {
   margin-top: 10px;
 }

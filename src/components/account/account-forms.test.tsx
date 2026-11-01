@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { AddSiteForm, AuthForms, ClaimOrderButton, RemoveSiteButton, SignOutButton } from "./account-forms";
+import { AddSiteForm, AuthForms, ChangePasswordForm, ClaimOrderButton, DeleteAccountForm, RemoveSiteButton, SignOutButton } from "./account-forms";
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   signIn: vi.fn(),
   signUp: vi.fn(),
   signOut: vi.fn(),
+  changePassword: vi.fn(),
+  deleteUser: vi.fn(),
   claimOrder: vi.fn(),
   forgetBrowserOrders: vi.fn(),
   removeSite: vi.fn(),
@@ -17,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, replace: mocks.replace }) }));
-vi.mock("@/lib/auth-client", () => ({ authClient: { signIn: { email: mocks.signIn }, signUp: { email: mocks.signUp }, signOut: mocks.signOut } }));
+vi.mock("@/lib/auth-client", () => ({ authClient: { signIn: { email: mocks.signIn }, signUp: { email: mocks.signUp }, signOut: mocks.signOut, changePassword: mocks.changePassword, deleteUser: mocks.deleteUser } }));
 vi.mock("@/lib/orders/actions", () => ({
   claimOrder: mocks.claimOrder,
   forgetBrowserOrders: mocks.forgetBrowserOrders,
@@ -111,6 +113,110 @@ describe("SignOutButton", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't reach the store");
     expect(mocks.assign).not.toHaveBeenCalled();
     expect(mocks.forgetBrowserOrders).not.toHaveBeenCalled();
+  });
+});
+
+describe("ChangePasswordForm", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.changePassword.mockResolvedValue({ error: null });
+  });
+
+  const fill = async () => {
+    await userEvent.click(screen.getByRole("button", { name: "Change password" }));
+    await userEvent.type(screen.getByLabelText("Current password"), "old-password-here");
+    await userEvent.type(screen.getByLabelText("New password"), "blue-truck-rebar-42");
+    await userEvent.click(screen.getByRole("button", { name: "Save new password" }));
+  };
+
+  test("starts closed, needs the current password, and signs out other devices", async () => {
+    render(<ChangePasswordForm />);
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+    await fill();
+    await waitFor(() => expect(mocks.changePassword).toHaveBeenCalledWith({ currentPassword: "old-password-here", newPassword: "blue-truck-rebar-42", revokeOtherSessions: true }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Any other devices have been signed out");
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+  });
+
+  test("the wrong current password says so, in plain words", async () => {
+    mocks.changePassword.mockResolvedValue({ error: { message: "Invalid password" } });
+    render(<ChangePasswordForm />);
+    await fill();
+    expect(await screen.findByRole("alert")).toHaveTextContent("That's not your current password.");
+    expect(screen.getByLabelText("New password")).toHaveValue("blue-truck-rebar-42");
+  });
+
+  test("the server's word on a weak password reaches the person", async () => {
+    mocks.changePassword.mockResolvedValue({ error: { message: "That password is too easy to guess. Try three or four unrelated words." } });
+    render(<ChangePasswordForm />);
+    await fill();
+    expect(await screen.findByRole("alert")).toHaveTextContent("too easy to guess");
+  });
+
+  test("a dropped connection stays on the form", async () => {
+    mocks.changePassword.mockRejectedValue(new Error("offline"));
+    render(<ChangePasswordForm />);
+    await fill();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't reach the store");
+  });
+
+  test("Cancel closes it", async () => {
+    render(<ChangePasswordForm />);
+    await userEvent.click(screen.getByRole("button", { name: "Change password" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+  });
+});
+
+describe("DeleteAccountForm", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.deleteUser.mockResolvedValue({ error: null });
+    vi.stubGlobal("location", { ...window.location, assign: mocks.assign });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const confirm = async (password = "my-password-here") => {
+    await userEvent.click(screen.getByRole("button", { name: "Delete my account" }));
+    await userEvent.type(screen.getByLabelText("Enter your password to confirm"), password);
+    await userEvent.click(screen.getByRole("button", { name: "Delete my account" }));
+  };
+
+  test("one press deletes nothing: it asks first, and says what stays", async () => {
+    render(<DeleteAccountForm />);
+    await userEvent.click(screen.getByRole("button", { name: "Delete my account" }));
+    expect(mocks.deleteUser).not.toHaveBeenCalled();
+    expect(screen.getByText(/can't be undone/)).toBeInTheDocument();
+    expect(screen.getByText(/Past orders stay on record/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Keep my account" }));
+    expect(screen.queryByLabelText("Enter your password to confirm")).not.toBeInTheDocument();
+  });
+
+  test("with the password, it deletes the account and leaves nothing in this browser", async () => {
+    sessionStorage.setItem("matexpress-checkout", JSON.stringify({ street: "12 Sampaguita St" }));
+    render(<DeleteAccountForm />);
+    await confirm();
+    await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith("/account"));
+    expect(mocks.deleteUser).toHaveBeenCalledWith({ password: "my-password-here" });
+    expect(mocks.forgetBrowserOrders).toHaveBeenCalled();
+    expect(sessionStorage.getItem("matexpress-checkout")).toBeNull();
+  });
+
+  test("the wrong password deletes nothing and says so", async () => {
+    mocks.deleteUser.mockResolvedValue({ error: { message: "Invalid password" } });
+    render(<DeleteAccountForm />);
+    await confirm();
+    expect(await screen.findByRole("alert")).toHaveTextContent("That's not your current password.");
+    expect(mocks.assign).not.toHaveBeenCalled();
+    expect(mocks.forgetBrowserOrders).not.toHaveBeenCalled();
+  });
+
+  test("a dropped connection stays on the form", async () => {
+    mocks.deleteUser.mockRejectedValue(new Error("offline"));
+    render(<DeleteAccountForm />);
+    await confirm();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't reach the store");
+    expect(mocks.assign).not.toHaveBeenCalled();
   });
 });
 

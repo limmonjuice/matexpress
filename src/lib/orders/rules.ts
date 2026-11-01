@@ -15,6 +15,9 @@ export const TRUCK_ACCESS = [
   { id: "unsure", label: "Not sure, call me first" },
 ] as const;
 
+/** Under every box where someone picks a new password. The server enforces it, in `password-rules.ts`. */
+export const PASSWORD_HINT = "At least 8 characters. Three or four unrelated words work well.";
+
 /** What to say when a call to the server fails outright. */
 export const CONNECTION_ERROR = "We couldn't reach the store. Check your connection and try again.";
 
@@ -22,6 +25,7 @@ export const CONNECTION_ERROR = "We couldn't reach the store. Check your connect
 export function friendlyAuthError(message?: string) {
   if (!message) return "Something went wrong. Please try again.";
   if (/invalid email or password/i.test(message)) return "That email and password don't match.";
+  if (/invalid password/i.test(message)) return "That's not your current password.";
   if (/already exists/i.test(message)) return "There's already an account with that email. Try signing in.";
   return message;
 }

@@ -219,6 +219,16 @@ describe("Checkout", () => {
     });
   });
 
+  test("too many orders in a few minutes says so, and leaves the cart alone", async () => {
+    mocks.placeOrder.mockResolvedValue({ kind: "limited" });
+    await show(smallOrder());
+    await fillSite();
+    await userEvent.click(place());
+    expect(await screen.findByText(/That's a lot of orders in a few minutes/)).toBeInTheDocument();
+    expect(useCartStore.getState().lines).toHaveLength(1);
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
   test("a load that needs a big truck asks if it can reach the gate", async () => {
     await show(bigLoad());
     await fillSite();

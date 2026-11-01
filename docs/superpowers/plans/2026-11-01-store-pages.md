@@ -35,6 +35,8 @@ Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where
 - **Tabs share one cart** through `storage` events, and a browser that blocks storage still works for the length of a page.
 - **Failures stay small:** each action shows its own message, and `error.tsx` in `(store)` and `(checkout)` catch the rest.
 
+**Security hardening:** [SECURITY.md](../../../SECURITY.md) is the record of what's in place, what isn't and what has to be true before launch. It covers the shared rate limits (the `throttles` table), the password rules, security headers, and the change-password and delete-account screens.
+
 **Added beyond the plan:**
 - **Shop by job,** at `/jobs/[slug]`: the materials for a job, with a drawing of it.
 - **Scale drawings** on the product page, generated from each size's real measurements.

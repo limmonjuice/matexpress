@@ -16,9 +16,13 @@ const mocks = vi.hoisted(() => ({
   grantOrderAccess: vi.fn(),
   forgetOrderAccess: vi.fn(),
   claimOrders: vi.fn(),
+  consume: vi.fn(),
+  address: null as string | null,
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers(mocks.address ? { "x-forwarded-for": mocks.address } : {}) }));
+vi.mock("@/lib/throttle", () => ({ consume: mocks.consume }));
 vi.mock("./repo", () => ({
   claimOrders: mocks.claimOrders,
   deleteSite: mocks.deleteSite,
@@ -72,6 +76,73 @@ describe("placeOrder", () => {
     expect(await placeOrder(bad as never)).toMatchObject({ kind: "changed" });
     expect(mocks.currentUser).not.toHaveBeenCalled();
     expect(mocks.grantOrderAccess).not.toHaveBeenCalled();
+  });
+});
+
+const ALLOWED = { allowed: true, retryAfter: null };
+const REFUSED = { allowed: false, retryAfter: 60 };
+
+beforeEach(() => {
+  mocks.address = null;
+  mocks.consume.mockResolvedValue(ALLOWED);
+});
+
+describe("how often the public forms can be used", () => {
+  const goodApplication = { storeName: "Mabuhay Hardware", contactName: "Rosa Santos", mobile: "0917 123 4567", city: "Antipolo", sells: "Cement" };
+  const goodOrder = {
+    idempotencyKey: "0d9e8f7a-6b5c-4d3e-9f2a-1b0c9d8e7f6a",
+    site: { contactName: "Rosa Santos", mobile: "0917 123 4567", street: "12 Sampaguita St", city: "San Roque, Antipolo", area: "Rizal" },
+    deliveryDate: "2026-11-03",
+    deliveryWindow: "8 AM to 12 NN",
+    paymentMethod: "gcash",
+    lines: [{ slug: "portland-cement", variantId: "40-kg", sellerSlug: "dalisay-hardware", quantity: 1, unitPrice: 252 }],
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  test("too many lookups from one address stop before the database is asked", async () => {
+    mocks.address = "203.0.113.9";
+    mocks.consume.mockResolvedValue(REFUSED);
+    expect(await lookupOrder(undefined, form({ number: "MX-AAAA2222", mobile: "0917 123 4567" }))).toEqual({ error: "Too many tries. Wait 15 minutes, then try again." });
+    expect(mocks.consume).toHaveBeenCalledWith("track:203.0.113.9", expect.anything());
+    expect(mocks.findOrder).not.toHaveBeenCalled();
+  });
+
+  test("changing address doesn't buy more guesses at one order's mobile", async () => {
+    mocks.address = "198.51.100.7";
+    mocks.consume.mockImplementation(async (key: string) => (key === "track-order:MX-AAAA2222" ? REFUSED : ALLOWED));
+    expect(await lookupOrder(undefined, form({ number: "mx-aaaa2222", mobile: "0917 123 4567" }))).toEqual({ error: "Too many tries. Wait 15 minutes, then try again." });
+    expect(mocks.findOrder).not.toHaveBeenCalled();
+  });
+
+  test("an order number no one could have costs no database row", async () => {
+    await lookupOrder(undefined, form({ number: "x".repeat(5000), mobile: "0917 123 4567" }));
+    expect(mocks.consume).not.toHaveBeenCalled();
+  });
+
+  test("too many applications from one address are refused, and a typo doesn't count as one", async () => {
+    mocks.address = "203.0.113.9";
+    await applyToSell(undefined, form({ ...goodApplication, mobile: "123" }));
+    expect(mocks.consume).not.toHaveBeenCalled();
+
+    mocks.consume.mockResolvedValue(REFUSED);
+    expect((await applyToSell(undefined, form(goodApplication))).error).toMatch(/several applications/);
+    expect(mocks.insertSellerApplication).not.toHaveBeenCalled();
+  });
+
+  test("too many orders from one address are refused before anything else happens", async () => {
+    mocks.address = "203.0.113.9";
+    mocks.consume.mockResolvedValue(REFUSED);
+    expect(await placeOrder(goodOrder as never)).toEqual({ kind: "limited" });
+    expect(mocks.currentUser).not.toHaveBeenCalled();
+  });
+
+  test("a chain of addresses isn't trusted, so everyone isn't lumped into one count", async () => {
+    mocks.address = "203.0.113.9, 198.51.100.7";
+    mocks.findOrder.mockResolvedValue(undefined);
+    await lookupOrder(undefined, form({ number: "MX-AAAA2222", mobile: "0917 123 4567" }));
+    expect(mocks.consume).toHaveBeenCalledTimes(1);
+    expect(mocks.consume).toHaveBeenCalledWith("track-order:MX-AAAA2222", expect.anything());
   });
 });
 

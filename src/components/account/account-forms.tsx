@@ -6,7 +6,7 @@ import { TrashIcon } from "@/components/home/icons";
 import { authClient } from "@/lib/auth-client";
 import { deliveryAreas } from "@/lib/delivery";
 import { claimOrder, forgetBrowserOrders, removeSite, saveSite } from "@/lib/orders/actions";
-import { CHECKOUT_ATTEMPT_KEY, CHECKOUT_DRAFT_KEY, CONNECTION_ERROR, FIELD_LIMITS, friendlyAuthError, localPath, type FieldErrors, type SiteFields } from "@/lib/orders/rules";
+import { CHECKOUT_ATTEMPT_KEY, CHECKOUT_DRAFT_KEY, CONNECTION_ERROR, FIELD_LIMITS, friendlyAuthError, localPath, PASSWORD_HINT, type FieldErrors, type SiteFields } from "@/lib/orders/rules";
 
 export function AuthForms({ next }: { next?: string }) {
   const router = useRouter();
@@ -70,7 +70,7 @@ export function AuthForms({ next }: { next?: string }) {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        {mode === "up" && <small id="hm-auth-rule">At least 8 characters.</small>}
+        {mode === "up" && <small id="hm-auth-rule">{PASSWORD_HINT}</small>}
       </div>
       {error && (
         <p className="hm-co-error" role="alert">
@@ -82,6 +82,18 @@ export function AuthForms({ next }: { next?: string }) {
       </button>
     </form>
   );
+}
+
+/** Leaves nothing of the buyer's here: their orders, their checkout draft, and whatever pages are kept alive in memory. */
+async function leaveThisBrowser() {
+  await forgetBrowserOrders();
+  try {
+    sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
+    sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY);
+  } catch {}
+  // A full page load, not a refresh: pages kept alive in the background still hold this buyer's site and orders.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- the router would keep them alive.
+  window.location.assign("/account");
 }
 
 export function SignOutButton() {
@@ -99,14 +111,7 @@ export function SignOutButton() {
             try {
               const { error } = await authClient.signOut();
               if (error) throw error;
-              await forgetBrowserOrders();
-              try {
-                sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
-                sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY);
-              } catch {}
-              // A full page load, not a refresh: pages kept alive in the background still hold this buyer's site and orders.
-              // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- the router would keep them alive.
-              window.location.assign("/account");
+              await leaveThisBrowser();
             } catch {
               setFailed(true);
             }
@@ -121,6 +126,154 @@ export function SignOutButton() {
         </p>
       )}
     </>
+  );
+}
+
+export function ChangePasswordForm() {
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [error, setError] = useState<string | undefined>();
+  const [changed, setChanged] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  if (!open) {
+    return (
+      <>
+        <button
+          type="button"
+          className="hm-btn hm-btn--ghost hm-btn--small"
+          onClick={() => {
+            setChanged(false);
+            setOpen(true);
+          }}
+        >
+          Change password
+        </button>
+        {changed && (
+          <p className="hm-account-done" role="status">
+            Password changed. Any other devices have been signed out.
+          </p>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <form
+      className="hm-siteform"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(undefined);
+        startTransition(async () => {
+          try {
+            const { error: failed } = await authClient.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true });
+            if (failed) {
+              setError(friendlyAuthError(failed.message));
+              return;
+            }
+            setCurrent("");
+            setNext("");
+            setChanged(true);
+            setOpen(false);
+          } catch {
+            setError(CONNECTION_ERROR);
+          }
+        });
+      }}
+    >
+      <div className="hm-co-field">
+        <label htmlFor="hm-password-current">Current password</label>
+        <input id="hm-password-current" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+      </div>
+      <div className="hm-co-field">
+        <label htmlFor="hm-password-new">New password</label>
+        <input
+          id="hm-password-new"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          maxLength={128}
+          aria-describedby="hm-password-rule"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          required
+        />
+        <small id="hm-password-rule">{PASSWORD_HINT}</small>
+      </div>
+      {error && (
+        <p className="hm-co-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="hm-account-actions">
+        <button type="submit" className="hm-btn hm-btn--ink hm-btn--small" disabled={pending}>
+          {pending ? "Saving…" : "Save new password"}
+        </button>
+        <button type="button" className="hm-btn hm-btn--ghost hm-btn--small" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Two steps and the password: this can't be undone, and a borrowed browser shouldn't be enough to do it. */
+export function DeleteAccountForm() {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | undefined>();
+  const [pending, startTransition] = useTransition();
+
+  if (!open) {
+    return (
+      <button type="button" className="hm-copy" onClick={() => setOpen(true)}>
+        Delete my account
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="hm-siteform"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(undefined);
+        startTransition(async () => {
+          try {
+            const { error: failed } = await authClient.deleteUser({ password });
+            if (failed) {
+              setError(friendlyAuthError(failed.message));
+              return;
+            }
+            await leaveThisBrowser();
+          } catch {
+            setError(CONNECTION_ERROR);
+          }
+        });
+      }}
+    >
+      <p className="hm-account-warning">
+        <b>This can&apos;t be undone.</b> Your account and saved sites are removed, and you&apos;re signed out everywhere. Past orders stay on record for receipts and warranty claims, no longer linked to an account.
+      </p>
+      <div className="hm-co-field">
+        <label htmlFor="hm-delete-password">Enter your password to confirm</label>
+        <input id="hm-delete-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      </div>
+      {error && (
+        <p className="hm-co-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="hm-account-actions">
+        <button type="submit" className="hm-btn hm-btn--ink hm-btn--small" disabled={pending}>
+          {pending ? "Deleting…" : "Delete my account"}
+        </button>
+        <button type="button" className="hm-btn hm-btn--ghost hm-btn--small" onClick={() => setOpen(false)}>
+          Keep my account
+        </button>
+      </div>
+    </form>
   );
 }
 

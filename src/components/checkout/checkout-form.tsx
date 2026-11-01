@@ -86,6 +86,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [problems, setProblems] = useState<OrderProblem[]>([]);
   const [failed, setFailed] = useState(false);
+  const [limited, setLimited] = useState(false);
   const [pending, startTransition] = useTransition();
   const [savedSites, setSavedSites] = useState<(SiteFields & { id: string })[]>([]);
   const [saveThisSite, setSaveThisSite] = useState(false);
@@ -162,6 +163,7 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
     setErrors(found);
     setProblems([]);
     setFailed(false);
+    setLimited(false);
     if (Object.keys(found).length) {
       requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid='true'], [data-invalid='true'] input")?.focus());
       return;
@@ -170,7 +172,8 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
     startTransition(async () => {
       try {
         const result = await placeOrder(input);
-        if (result.kind === "invalid") setErrors(result.errors);
+        if (result.kind === "limited") setLimited(true);
+        else if (result.kind === "invalid") setErrors(result.errors);
         else if (result.kind === "changed") setProblems(result.problems);
         else {
           // The order is in by now, so a site that fails to save can't be allowed to look like a failed order.
@@ -281,6 +284,15 @@ function CheckoutForm({ onPlaced }: { onPlaced: () => void }) {
             <div>
               <b>We couldn&apos;t reach the store. Nothing was charged twice.</b>
               <p>Check your connection and press Place order again.</p>
+            </div>
+          </div>
+        )}
+        {limited && (
+          <div className="hm-co-alert" role="alert">
+            <AlertIcon />
+            <div>
+              <b>That&apos;s a lot of orders in a few minutes, so nothing was charged.</b>
+              <p>Wait a little, then press Place order again.</p>
             </div>
           </div>
         )}

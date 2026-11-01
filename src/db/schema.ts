@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   integer,
   numeric,
@@ -176,4 +177,11 @@ export const sellerApplications = pgTable("seller_applications", {
   sells: text("sells").notNull(),
   awning: text("awning"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/** Rate limits, kept here so every copy of a hosted server counts together. */
+export const throttles = pgTable("throttles", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  windowStart: bigint("window_start", { mode: "number" }).notNull(),
 });

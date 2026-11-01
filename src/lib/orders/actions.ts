@@ -1,9 +1,11 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { listProducts } from "@/lib/catalog";
 import { toLine } from "@/lib/catalog/card";
 import type { LineData } from "@/lib/catalog/types";
+import { consume, type ThrottleRule } from "@/lib/throttle";
 import { createOrder, type CreateOrderResult, type PaymentProvider } from "./create-order";
 import { canSeeOrder } from "./proof";
 import { claimOrders, deleteSite, findOrder, insertSellerApplication, insertSite, itemsForOrder, ordersByNumbers, orderStore, sitesForUser } from "./repo";
@@ -13,8 +15,31 @@ import { simulatedPayments } from "./simulated-payments";
 
 const payments: PaymentProvider = simulatedPayments;
 
-export async function placeOrder(input: CheckoutInput): Promise<CreateOrderResult> {
+// How often the public forms can be used. Plenty for real people, and little enough that guessing gets nowhere.
+const LIMITS = {
+  orderFromAddress: { max: 20, window: 10 * 60 },
+  trackFromAddress: { max: 30, window: 15 * 60 },
+  trackOneOrder: { max: 10, window: 15 * 60 },
+  applyFromAddress: { max: 5, window: 60 * 60 },
+};
+
+/**
+ * Where a request came from, when the host says so plainly. A chain of addresses can't be trusted without
+ * knowing the proxies. With no single address, these limits stand aside rather than lumping everyone together.
+ */
+async function clientAddress() {
+  const forwarded = (await headers()).get("x-forwarded-for")?.split(",").map((part) => part.trim()).filter(Boolean);
+  return forwarded?.length === 1 ? forwarded[0] : undefined;
+}
+
+async function allowedFromHere(action: string, rule: ThrottleRule) {
+  const address = await clientAddress();
+  return !address || (await consume(`${action}:${address}`, rule)).allowed;
+}
+
+export async function placeOrder(input: CheckoutInput): Promise<CreateOrderResult | { kind: "limited" }> {
   if (!isCheckoutInput(input)) return { kind: "changed", problems: [{ kind: "gone", slug: "" }] };
+  if (!(await allowedFromHere("order", LIMITS.orderFromAddress))) return { kind: "limited" };
   const user = await currentUser();
   const result = await createOrder(input, {
     products: await listProducts(),
@@ -32,7 +57,12 @@ export async function lookupOrder(_: { error?: string } | undefined, form: FormD
   const number = String(form.get("number") ?? "").trim().toUpperCase();
   const mobile = normalizeMobile(String(form.get("mobile") ?? ""));
   const notFound = { error: "We couldn't find an order with that number and mobile. Check both and try again." };
-  if (!number || !mobile) return notFound;
+  if (!number || number.length > 20 || !mobile) return notFound;
+
+  // Per order as well as per address: changing address shouldn't buy more guesses at one order's mobile.
+  if (!(await allowedFromHere("track", LIMITS.trackFromAddress)) || !(await consume(`track-order:${number}`, LIMITS.trackOneOrder)).allowed) {
+    return { error: "Too many tries. Wait 15 minutes, then try again." };
+  }
 
   const found = await findOrder(number);
   if (!found || found.order.mobile !== mobile) return notFound;
@@ -110,6 +140,7 @@ export async function applyToSell(_: { error?: string; done?: boolean } | undefi
   if (!mobile) return { error: "Enter a mobile number like 0917 123 4567." };
   if (city.length < 2 || city.length > FIELD_LIMITS.city) return { error: "Enter your store's city." };
   if (sells.length < 2 || sells.length > FIELD_LIMITS.sells) return { error: "Tell us what your store sells." };
+  if (!(await allowedFromHere("apply", LIMITS.applyFromAddress))) return { error: "We already have several applications from here. Try again in an hour." };
   await insertSellerApplication({ storeName, contactName, mobile, city, sells, awning });
   return { done: true };
 }
