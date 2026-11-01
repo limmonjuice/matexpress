@@ -67,6 +67,25 @@ Products, sizes, offers, sellers and reviews live in Neon. Categories and job gu
 - **Limits to change as the catalog grows:** lists load the whole catalog into one cached entry, `/cart` and `/saved` send every product to the browser, and the search index is 20KB at 48 products. All of that is fine now and won't be at a few thousand products.
 - **`use cache` lives in each server instance's memory** and doesn't outlive a deploy. `"use cache: remote"` shares it, but costs a service and only pays off at a high hit rate. Measure first.
 
+## When the database fails
+
+Pages are built from the database, but they don't need it to be served. These were tested on a production build, by switching a running server's database off or making it hang. The tests are in `e2e/database-failure.spec.ts`.
+
+| What the buyer does | Database down | Database hanging |
+| --- | --- | --- |
+| Browses, searches, filters, opens products | Works, with no delay | Works, with no delay |
+| Uses the cart | Works: it lives in the browser | Works |
+| Places an order | "We couldn't reach the store", in under a second. The form and cart stay, and trying again can't double the order | The same, after 15 seconds |
+| Tracks an order, or applies to sell | The same message. What they typed stays | The same, after 15 seconds |
+| Signs in | "Something went wrong. Please try again." The email stays | The same, after 15 seconds |
+| Opens an order or their account | The error page, with a working Try again. An order's page still shows its number | The same, after 15 seconds |
+
+- **Every database request gives up after 15 seconds,** in `src/db/index.ts`. The driver has no limit of its own, so without this a hanging database left the page loading for over a minute, and the host would only stop it after minutes. Waking from sleep took about a second when measured.
+- **An outage can outlast the cache.** With the clock moved forward and the database still off, every page kept being served at 2 hours and at 25 hours. At 8 days, the home page, search and the search list each failed one request and then served their old copy again. This was on `next start`, not on Vercel. `npm run check:deploy` checks the cache there, but not an outage.
+- **Forms built on `useActionState` catch database errors themselves.** Anything thrown replaces the form with the error page and loses what was typed. See `couldNotReachDatabase` in `src/lib/orders/actions.ts`, which also keeps the error in the logs.
+- **`global-error.tsx` is the last resort,** for when the root layout itself fails. It brings its own fonts and styles, and a plain link home.
+- **The story page's 3D truck fails quietly.** With no WebGL the page reads the same, without the truck. Tested in `e2e/no-webgl.spec.ts`.
+
 ## Considered and left out
 
 - **Fully static category pages.** Reading the filters from the URL means each view runs about 50ms on the server, with 0 queries. Making them static would mean sending a whole category to the browser to filter there, which stops working as the catalog grows.

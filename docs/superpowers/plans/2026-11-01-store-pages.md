@@ -40,7 +40,7 @@ Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where
 **Security hardening:** [SECURITY.md](../../../SECURITY.md) is the record of what's in place, what isn't and what has to be true before launch. It covers the shared rate limits (the `throttles` table), the password rules, security headers, and the change-password and delete-account screens.
 
 **Added beyond the plan:**
-- **Demo controls on the order page,** with `ORDER_TIMELINE=demo`: buttons that do the sellers' and driver's part one step at a time and save real events, plus Start over. They replace the clock-driven `demoEvents`, so a demo runs at the presenter's pace.
+- **Demo controls on the order page,** with `SITE_MODE=demo`: buttons that do the sellers' and driver's part one step at a time and save real events, plus Start over. They replace the clock-driven `demoEvents`, so a demo runs at the presenter's pace.
 - **Shop by job,** at `/jobs/[slug]`: the materials for a job, with a drawing of it.
 - **Scale drawings** on the product page, generated from each size's real measurements.
 - **Splitting an order** when no one seller holds the quantity: one button adds it from two sellers.
@@ -49,7 +49,9 @@ Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where
 - **Signing out forgets the browser's orders and checkout draft,** for shared site-office computers.
 - **Saved sites fill checkout by themselves,** unless something has been typed already.
 
-**Checks:** `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm run check:links`, browser flows in a real browser, the design inspector on each page type, and one independent review of the whole branch. Not checked: Safari, real iOS and Android touch, real payment.
+**Getting ready for a public demo:** the plan for putting it online is in [docs/deploying.md](../../deploying.md). `SITE_MODE=demo` replaces the old demo setting and also labels every page and keeps the site out of search engines. How the store behaves when the database fails is in [docs/rendering-and-data.md](../../rendering-and-data.md).
+
+**Checks:** `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm run test:e2e` (every page, a real order, accounts, WCAG 2.2 AA with axe, keyboard use, the database failing, and link checks, in Edge at desktop and phone sizes), `npm run test:db` (buyers racing on a real database), the design inspector on each page type, and one independent review of the branch before the catalog moved to Neon. GitHub runs these on every push once it has a test database. Not checked: Safari's engine until that first run, real iOS and Android touch, real hosting, a screen reader, and real payment.
 
 **Design inspector, what stays and why:** it judges landing pages, so `focal-point`, `few-pictures`, `still-page` and `no-footage` don't apply to a cart, a form or a help page. `palette-cream` is the brand. `eyebrow` fires on the header's "Track order" link and on the last small line before a heading, none of them real labels. `numbering` is the deal countdown, `icon-cards` the gallery's thumbnails, and `side-scroll` and `edge-text` the rows meant to swipe. `shadow` is a selected control's outline, or the hero's floating cards.
 
@@ -620,7 +622,7 @@ Every task runs the same loop. Write the tests and run `npx vitest run <file>` t
 - AI-generated images
 - Delivery fees, areas, cut-off and windows, confirmed by the client
 - Returns, delivery and seller policies, plus contact details
-- `ORDER_TIMELINE=demo` removed, so buyers never see invented progress
+- `SITE_MODE=demo` removed, so buyers never see invented progress or a demo notice
 - Simulated payment replaced by PayMongo live keys, set in the hosting environment
 - `BETTER_AUTH_SECRET` set separately in production
 - Email and SMS added before promising any message
