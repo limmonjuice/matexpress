@@ -43,3 +43,5 @@ next-env.d.ts
 
 # design inspector output
 /.taste-skill/
+/test-results/
+/playwright-report/

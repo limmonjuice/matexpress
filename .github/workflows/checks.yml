@@ -1,0 +1,77 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+# The store tests share one test database, so runs wait for each other instead of colliding.
+concurrency:
+  group: checks
+  cancel-in-progress: false
+
+jobs:
+  code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npm test
+      # Only what ships to the live site. The warnings on development tools don't reach it.
+      - run: npm audit --omit=dev --audit-level=high
+
+  store:
+    needs: code
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Add a TEST_DATABASE_URL secret to turn these on. See docs/deploying.md. These tests write to that database and
+    # reset its catalog, so it must never be the production one.
+    env:
+      DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+    steps:
+      - name: Say so if there's no test database
+        if: ${{ env.DATABASE_URL == '' }}
+        run: echo "::notice::No TEST_DATABASE_URL secret, so the browser and database tests were skipped."
+      - uses: actions/checkout@v4
+        if: ${{ env.DATABASE_URL != '' }}
+      - uses: actions/setup-node@v4
+        if: ${{ env.DATABASE_URL != '' }}
+        with:
+          node-version: 24
+          cache: npm
+      - if: ${{ env.DATABASE_URL != '' }}
+        run: npm ci
+      - name: A secret just for this run
+        if: ${{ env.DATABASE_URL != '' }}
+        run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - name: Set up the test database
+        if: ${{ env.DATABASE_URL != '' }}
+        run: |
+          npm run db:migrate
+          npm run db:seed -- --reset
+      - name: Build as a public demo
+        if: ${{ env.DATABASE_URL != '' }}
+        run: npm run build
+        env:
+          SITE_MODE: demo
+          BETTER_AUTH_URL: http://localhost:3100
+      - if: ${{ env.DATABASE_URL != '' }}
+        run: npx playwright install --with-deps chromium webkit
+      - if: ${{ env.DATABASE_URL != '' }}
+        run: npm run test:e2e
+      - if: ${{ env.DATABASE_URL != '' }}
+        run: npm run test:db
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() && env.DATABASE_URL != '' }}
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
