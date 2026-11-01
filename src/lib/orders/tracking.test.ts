@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { demoEvents, demoTimelineOn, trackingView } from "./tracking";
+import { demoTimelineOn, nextSteps, trackingView } from "./tracking";
 
 const sellers = [
   { slug: "tibay-steel", name: "Tibay Steel" },
@@ -48,19 +48,42 @@ describe("trackingView", () => {
   });
 });
 
-describe("demoEvents", () => {
+describe("nextSteps", () => {
+  const placed = { type: "placed" };
+  const confirmed = (slug: string) => ({ type: "seller-confirmed", sellerSlug: slug });
+  const bothConfirmed = [placed, confirmed("tibay-steel"), confirmed("bato-aggregates")];
+  const types = (events: { type: string; sellerSlug?: string }[]) => nextSteps(events, sellers).map((step) => step.type);
+
+  test("a new order waits on every seller, and nothing else can happen yet", () => {
+    expect(nextSteps([placed], sellers)).toEqual([
+      { type: "seller-confirmed", sellerSlug: "tibay-steel", label: "Tibay Steel confirms" },
+      { type: "seller-confirmed", sellerSlug: "bato-aggregates", label: "Bato Aggregates confirms" },
+    ]);
+  });
+
+  test("one seller confirming leaves the other", () => {
+    expect(nextSteps([placed, confirmed("tibay-steel")], sellers).map((step) => step.sellerSlug)).toEqual(["bato-aggregates"]);
+  });
+
+  test("then the truck collects, leaves and delivers, one at a time", () => {
+    expect(types(bothConfirmed)).toEqual(["collecting"]);
+    expect(types([...bothConfirmed, { type: "collecting" }])).toEqual(["on-the-way"]);
+    expect(types([...bothConfirmed, { type: "collecting" }, { type: "on-the-way" }])).toEqual(["delivered"]);
+  });
+
+  test("a delivered order has nothing left to do", () => {
+    expect(types([...bothConfirmed, { type: "collecting" }, { type: "on-the-way" }, { type: "delivered" }])).toEqual([]);
+  });
+
+  test("an order with one seller goes straight on after they confirm", () => {
+    expect(nextSteps([placed, confirmed("tibay-steel")], [sellers[0]]).map((step) => step.type)).toEqual(["collecting"]);
+  });
+});
+
+describe("demoTimelineOn", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  test("nothing has happened yet at the start", () => {
-    expect(demoEvents(at(0), sellers, at(0))).toEqual([]);
-  });
-
-  test("plays out by the clock, in order", () => {
-    expect(demoEvents(at(0), sellers, at(2)).map((e) => e.sellerSlug)).toEqual(["tibay-steel", "bato-aggregates"]);
-    expect(demoEvents(at(0), sellers, at(30)).at(-1)?.type).toBe("delivered");
-  });
-
-  test("runs only when switched on", () => {
+  test("only when switched on", () => {
     vi.stubEnv("ORDER_TIMELINE", "");
     expect(demoTimelineOn()).toBe(false);
     vi.stubEnv("ORDER_TIMELINE", "demo");

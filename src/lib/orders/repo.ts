@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, getTableColumns, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { offers, orderEvents, orderItems, orders, products, sellerApplications, sellers, sites, variants } from "@/db/schema";
 import { NotEnoughStockError, type NewOrder, type OrderStore } from "./create-order";
@@ -79,7 +79,9 @@ export async function findOrder(number: string) {
       .leftJoin(variants, and(eq(variants.productSlug, orderItems.productSlug), eq(variants.id, orderItems.variantId)))
       .leftJoin(products, eq(products.slug, orderItems.productSlug))
       .leftJoin(sellers, eq(sellers.slug, orderItems.sellerSlug))
-      .where(inArray(orderItems.orderId, thisOrder)),
+      .where(inArray(orderItems.orderId, thisOrder))
+      // Without this the database can return them in any order, and the page would reshuffle as it refreshes.
+      .orderBy(asc(orderItems.sellerName), asc(orderItems.name), asc(orderItems.variantId)),
     db.select().from(orderEvents).where(inArray(orderEvents.orderId, thisOrder)),
   ]);
   if (!order) return undefined;
@@ -119,6 +121,15 @@ export async function loadAccount(userId: string, proven: string[]) {
       .orderBy(desc(orders.createdAt)),
   ]);
   return { orders: ownOrders, sites: ownSites, unclaimed };
+}
+
+export async function addOrderEvent(orderId: string, type: string, sellerSlug?: string) {
+  await db.insert(orderEvents).values({ id: crypto.randomUUID(), orderId, type, sellerSlug });
+}
+
+/** Back to just placed. Only the demo controls use this: real progress doesn't get undone. */
+export async function clearOrderProgress(orderId: string) {
+  await db.delete(orderEvents).where(and(eq(orderEvents.orderId, orderId), ne(orderEvents.type, "placed")));
 }
 
 export async function itemsForOrder(orderId: string) {

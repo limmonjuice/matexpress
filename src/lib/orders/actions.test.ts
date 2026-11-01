@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { products } from "@/db/sample/products";
-import { applyToSell, buyAgain, claimOrder, forgetBrowserOrders, lookupOrder, placeOrder, removeSite, saveSite } from "./actions";
+import { applyToSell, buyAgain, claimOrder, demoAdvanceOrder, demoRestartOrder, forgetBrowserOrders, lookupOrder, placeOrder, removeSite, saveSite } from "./actions";
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
@@ -21,6 +21,9 @@ const mocks = vi.hoisted(() => ({
   revalidateTag: vi.fn(),
   liveProducts: vi.fn(),
   store: { findNumberByKey: vi.fn(), insert: vi.fn(), recordPayment: vi.fn() },
+  addOrderEvent: vi.fn(),
+  clearOrderProgress: vi.fn(),
+  mightBeSignedIn: vi.fn(),
   address: null as string | null,
 }));
 
@@ -30,7 +33,9 @@ vi.mock("@/lib/catalog", () => ({ CATALOG_TAG: "catalog", liveProducts: mocks.li
 vi.mock("next/headers", () => ({ headers: async () => new Headers(mocks.address ? { "x-forwarded-for": mocks.address } : {}) }));
 vi.mock("@/lib/throttle", () => ({ consume: mocks.consume }));
 vi.mock("./repo", () => ({
+  addOrderEvent: mocks.addOrderEvent,
   claimOrders: mocks.claimOrders,
+  clearOrderProgress: mocks.clearOrderProgress,
   deleteSite: mocks.deleteSite,
   findOrder: mocks.findOrder,
   insertSellerApplication: mocks.insertSellerApplication,
@@ -44,6 +49,7 @@ vi.mock("./session", () => ({
   currentUser: mocks.currentUser,
   forgetOrderAccess: mocks.forgetOrderAccess,
   grantOrderAccess: mocks.grantOrderAccess,
+  mightBeSignedIn: mocks.mightBeSignedIn,
   provenOrders: mocks.provenOrders,
 }));
 
@@ -116,6 +122,101 @@ describe("placeOrder", () => {
       expect(await placeOrder(good)).toMatchObject({ kind: "placed", number: "MX-AAAA2222", alreadyPlaced: true });
       expect(mocks.revalidateTag).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("the demo controls", () => {
+  const NUMBER = "MX-AAAA2222";
+  const order = (events: { type: string; sellerSlug?: string }[] = [{ type: "placed" }]) => ({
+    order: { id: "order-id", number: NUMBER, userId: null },
+    items: [
+      { sellerSlug: "bakal-supply", sellerName: "Bakal Supply" },
+      { sellerSlug: "bato-aggregates", sellerName: "Bato Aggregates" },
+      { sellerSlug: "bakal-supply", sellerName: "Bakal Supply" },
+    ],
+    events,
+  });
+  const confirmed = [{ type: "placed" }, { type: "seller-confirmed", sellerSlug: "bakal-supply" }, { type: "seller-confirmed", sellerSlug: "bato-aggregates" }];
+  const confirm = { type: "seller-confirmed", sellerSlug: "bakal-supply" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("ORDER_TIMELINE", "demo");
+    mocks.currentUser.mockResolvedValue(undefined);
+    mocks.mightBeSignedIn.mockResolvedValue(false);
+    mocks.provenOrders.mockResolvedValue([NUMBER]);
+    mocks.findOrder.mockResolvedValue(order());
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  test("a seller confirming is saved as a real event", async () => {
+    await demoAdvanceOrder(NUMBER, confirm);
+    expect(mocks.addOrderEvent).toHaveBeenCalledWith("order-id", "seller-confirmed", "bakal-supply");
+  });
+
+  test("a truck step names no seller", async () => {
+    mocks.findOrder.mockResolvedValue(order(confirmed));
+    await demoAdvanceOrder(NUMBER, { type: "collecting" });
+    expect(mocks.addOrderEvent).toHaveBeenCalledWith("order-id", "collecting", undefined);
+  });
+
+  test("with the switch off they do nothing, even for the order's own browser", async () => {
+    vi.stubEnv("ORDER_TIMELINE", "");
+    await demoAdvanceOrder(NUMBER, confirm);
+    await demoRestartOrder(NUMBER);
+    expect(mocks.findOrder).not.toHaveBeenCalled();
+    expect(mocks.addOrderEvent).not.toHaveBeenCalled();
+    expect(mocks.clearOrderProgress).not.toHaveBeenCalled();
+  });
+
+  test("a stranger can't move someone else's order", async () => {
+    mocks.provenOrders.mockResolvedValue(["MX-BBBB3333"]);
+    await demoAdvanceOrder(NUMBER, confirm);
+    await demoRestartOrder(NUMBER);
+    expect(mocks.addOrderEvent).not.toHaveBeenCalled();
+    expect(mocks.clearOrderProgress).not.toHaveBeenCalled();
+  });
+
+  test("another account can't either", async () => {
+    mocks.provenOrders.mockResolvedValue([]);
+    mocks.mightBeSignedIn.mockResolvedValue(true);
+    mocks.currentUser.mockResolvedValue({ id: "someone-else" });
+    await demoAdvanceOrder(NUMBER, confirm);
+    expect(mocks.addOrderEvent).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["delivery before the sellers have confirmed", { type: "delivered" }],
+    ["the truck before the sellers have confirmed", { type: "collecting" }],
+    ["a seller who isn't on this order", { type: "seller-confirmed", sellerSlug: "tibay-steel" }],
+    ["a step that doesn't exist", { type: "placed" }],
+    ["nothing at all", undefined as never],
+  ])("%s is refused", async (_, step) => {
+    await demoAdvanceOrder(NUMBER, step);
+    expect(mocks.addOrderEvent).not.toHaveBeenCalled();
+  });
+
+  test("a seller can't confirm twice", async () => {
+    mocks.findOrder.mockResolvedValue(order([{ type: "placed" }, confirm]));
+    await demoAdvanceOrder(NUMBER, confirm);
+    expect(mocks.addOrderEvent).not.toHaveBeenCalled();
+  });
+
+  test("a delivered order has nothing left to do", async () => {
+    mocks.findOrder.mockResolvedValue(order([...confirmed, { type: "collecting" }, { type: "on-the-way" }, { type: "delivered" }]));
+    await demoAdvanceOrder(NUMBER, { type: "delivered" });
+    expect(mocks.addOrderEvent).not.toHaveBeenCalled();
+  });
+
+  test("starting over clears the progress", async () => {
+    await demoRestartOrder(NUMBER);
+    expect(mocks.clearOrderProgress).toHaveBeenCalledWith("order-id");
+  });
+
+  test("what isn't an order number is turned away", async () => {
+    await demoAdvanceOrder(["MX-AAAA2222"] as never, confirm);
+    await demoRestartOrder({ number: NUMBER } as never);
+    expect(mocks.findOrder).not.toHaveBeenCalled();
   });
 });
 

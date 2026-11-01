@@ -8,10 +8,11 @@ import { formatPeso, plural } from "@/lib/format";
 import { formatWeight, loadFor } from "@/lib/load";
 import type { LoadedOrder } from "@/lib/orders/repo";
 import { PAYMENT_METHODS, TRUCK_ACCESS, formatMobile } from "@/lib/orders/rules";
-import { demoEvents, demoTimelineOn, STAGES, trackingView, type EventType } from "@/lib/orders/tracking";
+import { demoTimelineOn, nextSteps, STAGES, trackingView, type EventType } from "@/lib/orders/tracking";
 import type { CartLine } from "@/stores/cart-store";
 import { ClaimOrderButton } from "@/components/account/account-forms";
 import { CreateAccountOffer } from "./create-account-offer";
+import { DemoControls } from "./demo-controls";
 import { BuyAgainButton, CopyNumber, LiveRefresh } from "./order-bits";
 import "./orders.css";
 
@@ -39,11 +40,7 @@ export function OrderView({ found, justPlaced, signedIn }: { found: LoadedOrder;
   const load = loadFor(weight);
 
   const sellers = [...new Map(items.map((i) => [i.sellerSlug, { slug: i.sellerSlug, name: i.sellerName, tint: i.sellerTint ?? undefined }])).values()];
-  const demo = demoTimelineOn();
-  const tracked = [
-    ...events.map((e) => ({ type: e.type as EventType, sellerSlug: e.sellerSlug, at: e.createdAt })),
-    ...(demo ? demoEvents(order.createdAt, sellers, new Date()) : []),
-  ];
+  const tracked = events.map((e) => ({ type: e.type as EventType, sellerSlug: e.sellerSlug, at: e.createdAt }));
   const view = trackingView(tracked, sellers);
   const payment = PAYMENT_METHODS.find((m) => m.id === order.paymentMethod)?.label ?? order.paymentMethod;
   const access = TRUCK_ACCESS.find((a) => a.id === order.truckAccess)?.label;
@@ -109,7 +106,7 @@ export function OrderView({ found, justPlaced, signedIn }: { found: LoadedOrder;
           </ol>
         </div>
 
-        {demo && <p className="hm-track-demo">Demo timeline: this progress is simulated until sellers and drivers are on the system.</p>}
+        {demoTimelineOn() && <DemoControls number={order.number} steps={nextSteps(tracked, sellers)} started={tracked.some((e) => e.type !== "placed")} />}
       </section>
 
       <div className="hm-order-grid hm-arrive">

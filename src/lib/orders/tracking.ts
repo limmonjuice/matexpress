@@ -40,23 +40,24 @@ export function trackingView(events: TrackedEvent[], sellers: { slug: string; na
   };
 }
 
-const MINUTE = 60_000;
+export type NextStep = { type: Exclude<EventType, "placed">; sellerSlug?: string; label: string };
 
-/**
- * Sellers and drivers don't have their side of the system yet, so nothing can
- * really advance an order. With ORDER_TIMELINE=demo this plays out the steps by
- * the clock, so the tracking page can be seen working. It must stay off for real
- * customers, who should never read invented progress.
- */
-export function demoEvents(placedAt: Date, sellers: { slug: string }[], now: Date): TrackedEvent[] {
-  const at = (minutes: number) => new Date(placedAt.getTime() + minutes * MINUTE);
-  const steps: TrackedEvent[] = [
-    ...sellers.map((seller, i) => ({ type: "seller-confirmed" as const, sellerSlug: seller.slug, at: at(1 + i) })),
-    { type: "collecting", at: at(sellers.length + 2) },
-    { type: "on-the-way", at: at(sellers.length + 5) },
-    { type: "delivered", at: at(sellers.length + 10) },
-  ];
-  return steps.filter((step) => step.at <= now);
+/** What can happen to an order next, in the order it really happens: every seller confirms, then the truck collects, leaves and delivers. */
+export function nextSteps(events: { type: string; sellerSlug?: string | null }[], sellers: { slug: string; name: string }[]): NextStep[] {
+  const has = (type: EventType) => events.some((e) => e.type === type);
+  if (has("delivered")) return [];
+
+  const waiting = sellers.filter((seller) => !events.some((e) => e.type === "seller-confirmed" && e.sellerSlug === seller.slug));
+  if (waiting.length) return waiting.map((seller) => ({ type: "seller-confirmed", sellerSlug: seller.slug, label: `${seller.name} confirms` }));
+
+  if (!has("collecting")) return [{ type: "collecting", label: "Truck starts collecting" }];
+  if (!has("on-the-way")) return [{ type: "on-the-way", label: "Truck leaves for the site" }];
+  return [{ type: "delivered", label: "Truck delivers" }];
 }
 
+/**
+ * Sellers and drivers don't have their side of the system yet, so nothing else can
+ * advance an order. With ORDER_TIMELINE=demo the order page offers the next steps as
+ * buttons. It must stay off for real customers, who should never read invented progress.
+ */
 export const demoTimelineOn = () => process.env.ORDER_TIMELINE === "demo";

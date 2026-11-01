@@ -182,10 +182,47 @@
   color: var(--hm-accent);
   font-size: 0.8125rem;
 }
-.hm-track-demo {
-  margin-top: 16px;
+/* Not part of the store: the sellers' and driver's side, for showing how tracking works. */
+.hm-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 32px;
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid rgb(255 255 255 / 0.14);
+}
+.hm-demo h2 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.hm-demo > div > p {
+  margin-top: 2px;
   color: #aeb6c3;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.hm-demo-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.hm-demo-again {
+  padding: 8px 4px;
+  color: #c4ccd8;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hm-demo-again:hover {
+  color: #fff;
+}
+.hm-demo-failed {
+  width: 100%;
+  color: var(--hm-accent);
+  font-size: 0.875rem;
 }
 
 /* -------------------------------------------------------------- the page */

@@ -25,7 +25,7 @@ Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where
 - **Order rules live in `src/lib/orders/`** as `rules.ts`, `price-order.ts`, `create-order.ts`, `tracking.ts`, `proof.ts`, `repo.ts`, `session.ts` and `actions.ts`, rather than the file names in Tasks 11 to 13. `canViewOrder` became `canSeeOrder` in `proof.ts`.
 - **Checkout, order and account components are fewer files** than listed: `checkout-form.tsx`, `order-view.tsx`, `order-bits.tsx`, `account-forms.tsx`.
 
-**Rendering and database:** how each page is served, the rules for new code, and the design for Task 10's caching (one tag per product, not one for the whole catalog) are in `docs/rendering-and-data.md`. `ordersForUser` became `loadAccount`, and `findOrder` is one trip.
+**Rendering and database:** how each page is served, the rules for new code, and how the catalog is read and cached are in `docs/rendering-and-data.md`. `ordersForUser` became `loadAccount`, and `findOrder` is one trip.
 
 **Changed after the independent review:**
 - **The order is saved before any charge,** as `pending`, then the payment is recorded. A failed save never charges, and two requests with one key charge once. Task 14 builds on this order.
@@ -40,6 +40,7 @@ Phases 1, 2 and 3 are built, except the two tasks that wait on the client. Where
 **Security hardening:** [SECURITY.md](../../../SECURITY.md) is the record of what's in place, what isn't and what has to be true before launch. It covers the shared rate limits (the `throttles` table), the password rules, security headers, and the change-password and delete-account screens.
 
 **Added beyond the plan:**
+- **Demo controls on the order page,** with `ORDER_TIMELINE=demo`: buttons that do the sellers' and driver's part one step at a time and save real events, plus Start over. They replace the clock-driven `demoEvents`, so a demo runs at the presenter's pace.
 - **Shop by job,** at `/jobs/[slug]`: the materials for a job, with a drawing of it.
 - **Scale drawings** on the product page, generated from each size's real measurements.
 - **Splitting an order** when no one seller holds the quantity: one button adds it from two sellers.

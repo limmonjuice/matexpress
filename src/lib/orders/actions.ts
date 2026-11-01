@@ -8,11 +8,13 @@ import { toLine } from "@/lib/catalog/card";
 import type { LineData } from "@/lib/catalog/types";
 import { consume, type ThrottleRule } from "@/lib/throttle";
 import { createOrder, type CreateOrderResult, type PaymentProvider } from "./create-order";
+import { openOrder } from "./open-order";
 import { canSeeOrder } from "./proof";
-import { claimOrders, deleteSite, findOrder, insertSellerApplication, insertSite, itemsForOrder, ordersByNumbers, orderStore, sitesForUser } from "./repo";
+import { addOrderEvent, claimOrders, clearOrderProgress, deleteSite, findOrder, insertSellerApplication, insertSite, itemsForOrder, ordersByNumbers, orderStore, sitesForUser } from "./repo";
 import { FIELD_LIMITS, isCheckoutInput, isId, isSiteFields, normalizeMobile, SELLER_AWNINGS, validateSite, type CheckoutInput, type FieldErrors, type SiteFields } from "./rules";
 import { currentUser, forgetOrderAccess, grantOrderAccess, provenOrders } from "./session";
 import { simulatedPayments } from "./simulated-payments";
+import { demoTimelineOn, nextSteps } from "./tracking";
 
 const payments: PaymentProvider = simulatedPayments;
 
@@ -89,6 +91,26 @@ export async function claimOrder(number: string) {
 
 export async function forgetBrowserOrders() {
   await forgetOrderAccess();
+}
+
+/**
+ * Demo only: does what a seller or the driver would to an order, one step at a time and only the step that's next.
+ * It needs the demo switch on, and a browser that could open this order anyway.
+ */
+export async function demoAdvanceOrder(number: string, step: { type: string; sellerSlug?: string }) {
+  if (!demoTimelineOn() || typeof number !== "string") return;
+  const { found } = await openOrder(number);
+  if (!found) return;
+  const sellers = [...new Map(found.items.map((item) => [item.sellerSlug, { slug: item.sellerSlug, name: item.sellerName }])).values()];
+  const next = nextSteps(found.events, sellers).find((s) => s.type === step?.type && s.sellerSlug === step?.sellerSlug);
+  if (next) await addOrderEvent(found.order.id, next.type, next.sellerSlug);
+}
+
+/** Demo only: puts an order back to just placed, so the journey can be shown again. */
+export async function demoRestartOrder(number: string) {
+  if (!demoTimelineOn() || typeof number !== "string") return;
+  const { found } = await openOrder(number);
+  if (found) await clearOrderProgress(found.order.id);
 }
 
 /** What's in an old order, as cart lines at today's prices, and what can no longer be bought. */

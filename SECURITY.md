@@ -47,6 +47,7 @@ The per-account limit can be used to keep someone out of their account for a whi
 - **Who can open an order:** the account that owns it, or a browser holding a signed cookie proving it placed the order or gave its number and mobile (`src/lib/orders/proof.ts`). A wrong number and a wrong mobile get the same answer.
 - **Charging:** an order is saved before any charge, and one key means one order, so a retry can't charge twice.
 - **Claiming:** orders join an account only when the buyer asks.
+- **Demo controls:** with `ORDER_TIMELINE=demo`, the order page can do the sellers' and driver's part. The actions refuse everything with the switch off, and with it on they only work for a browser that could open that order anyway.
 
 ### The browser
 
@@ -76,7 +77,7 @@ Also not built:
 
 - [ ] `BETTER_AUTH_URL` is the real `https://` address. Cookies only get `Secure` from it, and sign-ins from any other address are refused, including preview deployments.
 - [ ] `BETTER_AUTH_SECRET` is new for production, long and random: `openssl rand -base64 32`.
-- [ ] `ORDER_TIMELINE=demo` is removed, so buyers never see invented progress.
+- [ ] `ORDER_TIMELINE=demo` is removed. While it's on, anyone who can open an order can move it along with the demo controls, so buyers could read invented progress.
 - [ ] The host sends one client address in `X-Forwarded-For` and overwrites whatever the visitor sent. Vercel does. Behind any other proxy, set `advanced.ipAddress.trustedProxies` in `src/lib/auth.ts` and match it in `clientAddress` in `src/lib/orders/actions.ts`. Without a trustworthy address, sign-ins share one limit across all visitors, and the per-address form limits switch off.
 - [ ] The site is served only over HTTPS.
 - [ ] If a payment gateway is embedded rather than redirected to, add its address to the content policy in `next.config.ts`.
