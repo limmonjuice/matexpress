@@ -6,15 +6,16 @@ import { redirect } from "next/navigation";
 import { CATALOG_TAG, liveProducts } from "@/lib/catalog";
 import { toLine } from "@/lib/catalog/card";
 import type { LineData } from "@/lib/catalog/types";
+import { isDemoSite } from "@/lib/site-mode";
 import { consume, type ThrottleRule } from "@/lib/throttle";
 import { createOrder, type CreateOrderResult, type PaymentProvider } from "./create-order";
 import { openOrder } from "./open-order";
 import { canSeeOrder } from "./proof";
 import { addOrderEvent, claimOrders, clearOrderProgress, deleteSite, findOrder, insertSellerApplication, insertSite, itemsForOrder, ordersByNumbers, orderStore, sitesForUser } from "./repo";
-import { FIELD_LIMITS, isCheckoutInput, isId, isSiteFields, normalizeMobile, SELLER_AWNINGS, validateSite, type CheckoutInput, type FieldErrors, type SiteFields } from "./rules";
+import { CONNECTION_ERROR, FIELD_LIMITS, isCheckoutInput, isId, isSiteFields, normalizeMobile, SELLER_AWNINGS, validateSite, type CheckoutInput, type FieldErrors, type SiteFields } from "./rules";
 import { currentUser, forgetOrderAccess, grantOrderAccess, provenOrders } from "./session";
 import { simulatedPayments } from "./simulated-payments";
-import { demoTimelineOn, nextSteps } from "./tracking";
+import { nextSteps } from "./tracking";
 
 const payments: PaymentProvider = simulatedPayments;
 
@@ -38,6 +39,12 @@ async function clientAddress() {
 async function allowedFromHere(action: string, rule: ThrottleRule) {
   const address = await clientAddress();
   return !address || (await consume(`${action}:${address}`, rule)).allowed;
+}
+
+/** For the forms built on `useActionState`: anything thrown replaces the form with the error page, and takes what was typed with it. */
+function couldNotReachDatabase(error: unknown) {
+  console.error(error);
+  return { error: CONNECTION_ERROR };
 }
 
 export async function placeOrder(input: CheckoutInput): Promise<CreateOrderResult | { kind: "limited" }> {
@@ -67,12 +74,16 @@ export async function lookupOrder(_: { error?: string } | undefined, form: FormD
   const notFound = { error: "We couldn't find an order with that number and mobile. Check both and try again." };
   if (!number || number.length > 20 || !mobile) return notFound;
 
-  // Per order as well as per address: changing address shouldn't buy more guesses at one order's mobile.
-  if (!(await allowedFromHere("track", LIMITS.trackFromAddress)) || !(await consume(`track-order:${number}`, LIMITS.trackOneOrder)).allowed) {
-    return { error: "Too many tries. Wait 15 minutes, then try again." };
+  let found: Awaited<ReturnType<typeof findOrder>>;
+  try {
+    // Per order as well as per address: changing address shouldn't buy more guesses at one order's mobile.
+    if (!(await allowedFromHere("track", LIMITS.trackFromAddress)) || !(await consume(`track-order:${number}`, LIMITS.trackOneOrder)).allowed) {
+      return { error: "Too many tries. Wait 15 minutes, then try again." };
+    }
+    found = await findOrder(number);
+  } catch (error) {
+    return couldNotReachDatabase(error);
   }
-
-  const found = await findOrder(number);
   if (!found || found.order.mobile !== mobile) return notFound;
 
   await grantOrderAccess(number);
@@ -98,7 +109,7 @@ export async function forgetBrowserOrders() {
  * It needs the demo switch on, and a browser that could open this order anyway.
  */
 export async function demoAdvanceOrder(number: string, step: { type: string; sellerSlug?: string }) {
-  if (!demoTimelineOn() || typeof number !== "string") return;
+  if (!isDemoSite() || typeof number !== "string") return;
   const { found } = await openOrder(number);
   if (!found) return;
   const sellers = [...new Map(found.items.map((item) => [item.sellerSlug, { slug: item.sellerSlug, name: item.sellerName }])).values()];
@@ -108,7 +119,7 @@ export async function demoAdvanceOrder(number: string, step: { type: string; sel
 
 /** Demo only: puts an order back to just placed, so the journey can be shown again. */
 export async function demoRestartOrder(number: string) {
-  if (!demoTimelineOn() || typeof number !== "string") return;
+  if (!isDemoSite() || typeof number !== "string") return;
   const { found } = await openOrder(number);
   if (found) await clearOrderProgress(found.order.id);
 }
@@ -169,7 +180,11 @@ export async function applyToSell(_: { error?: string; done?: boolean } | undefi
   if (!mobile) return { error: "Enter a mobile number like 0917 123 4567." };
   if (city.length < 2 || city.length > FIELD_LIMITS.city) return { error: "Enter your store's city." };
   if (sells.length < 2 || sells.length > FIELD_LIMITS.sells) return { error: "Tell us what your store sells." };
-  if (!(await allowedFromHere("apply", LIMITS.applyFromAddress))) return { error: "We already have several applications from here. Try again in an hour." };
-  await insertSellerApplication({ storeName, contactName, mobile, city, sells, awning });
+  try {
+    if (!(await allowedFromHere("apply", LIMITS.applyFromAddress))) return { error: "We already have several applications from here. Try again in an hour." };
+    await insertSellerApplication({ storeName, contactName, mobile, city, sells, awning });
+  } catch (error) {
+    return couldNotReachDatabase(error);
+  }
   return { done: true };
 }

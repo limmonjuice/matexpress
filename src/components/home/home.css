@@ -224,6 +224,10 @@ button:hover > .hm-arrow {
   background: #fff;
   box-shadow: 0 1px 0 var(--hm-line);
 }
+/* Tabbing backwards, or to a field below the fold, must not land under the sticky header or the phone's cart bar. */
+html:has(.hm-header) {
+  scroll-padding-block: 120px 88px;
+}
 .hm-header-row {
   display: flex;
   align-items: center;

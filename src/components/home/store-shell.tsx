@@ -13,7 +13,9 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
       <StoreScroll />
       <AnnouncementBar />
       <SiteHeader />
-      <main className="hm-main">{children}</main>
+      <main id="main" className="hm-main">
+        {children}
+      </main>
       <SiteFooter />
       <MobileCartBar />
     </div>

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { products } from "@/db/sample/products";
 import { applyToSell, buyAgain, claimOrder, demoAdvanceOrder, demoRestartOrder, forgetBrowserOrders, lookupOrder, placeOrder, removeSite, saveSite } from "./actions";
+import { CONNECTION_ERROR } from "./rules";
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
@@ -141,7 +142,7 @@ describe("the demo controls", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("ORDER_TIMELINE", "demo");
+    vi.stubEnv("SITE_MODE", "demo");
     mocks.currentUser.mockResolvedValue(undefined);
     mocks.mightBeSignedIn.mockResolvedValue(false);
     mocks.provenOrders.mockResolvedValue([NUMBER]);
@@ -161,7 +162,7 @@ describe("the demo controls", () => {
   });
 
   test("with the switch off they do nothing, even for the order's own browser", async () => {
-    vi.stubEnv("ORDER_TIMELINE", "");
+    vi.stubEnv("SITE_MODE", "");
     await demoAdvanceOrder(NUMBER, confirm);
     await demoRestartOrder(NUMBER);
     expect(mocks.findOrder).not.toHaveBeenCalled();
@@ -312,6 +313,21 @@ describe("lookupOrder", () => {
     await expect(lookupOrder(undefined, form({ number: " mx-aaaa1111 ", mobile }))).rejects.toThrow("redirect:/orders/MX-AAAA1111");
     expect(mocks.grantOrderAccess).toHaveBeenCalledWith("MX-AAAA1111");
   });
+
+  test("when the database can't answer, the buyer is told and keeps what they typed", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const typed = form({ number: "MX-AAAA1111", mobile: "0917 123 4567" });
+
+    mocks.findOrder.mockRejectedValue(new Error("down"));
+    expect(await lookupOrder(undefined, typed)).toEqual({ error: CONNECTION_ERROR });
+
+    mocks.consume.mockRejectedValue(new Error("down"));
+    expect(await lookupOrder(undefined, typed)).toEqual({ error: CONNECTION_ERROR });
+
+    expect(mocks.grantOrderAccess).not.toHaveBeenCalled();
+    expect(logged).toHaveBeenCalledTimes(2);
+    logged.mockRestore();
+  });
 });
 
 describe("claimOrder", () => {
@@ -442,6 +458,14 @@ describe("applyToSell", () => {
   test("an awning colour that isn't on the list is dropped, not stored", async () => {
     await applyToSell(undefined, form({ ...good, awning: "<script>" }));
     expect(mocks.insertSellerApplication.mock.calls[0][0].awning).toBeUndefined();
+  });
+
+  test("when the database can't answer, the applicant is told and keeps what they typed", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.insertSellerApplication.mockRejectedValueOnce(new Error("down"));
+    expect(await applyToSell(undefined, form(good))).toEqual({ error: CONNECTION_ERROR });
+    expect(logged).toHaveBeenCalledTimes(1);
+    logged.mockRestore();
   });
 });
 

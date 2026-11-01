@@ -14,7 +14,7 @@ export default function HowItWorks() {
   return (
     <>
       <SmoothScroll />
-      <main>
+      <main id="main">
         <Hero />
         <Story />
       </main>

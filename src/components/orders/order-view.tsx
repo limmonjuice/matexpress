@@ -8,7 +8,8 @@ import { formatPeso, plural } from "@/lib/format";
 import { formatWeight, loadFor } from "@/lib/load";
 import type { LoadedOrder } from "@/lib/orders/repo";
 import { PAYMENT_METHODS, TRUCK_ACCESS, formatMobile } from "@/lib/orders/rules";
-import { demoTimelineOn, nextSteps, STAGES, trackingView, type EventType } from "@/lib/orders/tracking";
+import { nextSteps, STAGES, trackingView, type EventType } from "@/lib/orders/tracking";
+import { isDemoSite } from "@/lib/site-mode";
 import type { CartLine } from "@/stores/cart-store";
 import { ClaimOrderButton } from "@/components/account/account-forms";
 import { CreateAccountOffer } from "./create-account-offer";
@@ -106,7 +107,7 @@ export function OrderView({ found, justPlaced, signedIn }: { found: LoadedOrder;
           </ol>
         </div>
 
-        {demoTimelineOn() && <DemoControls number={order.number} steps={nextSteps(tracked, sellers)} started={tracked.some((e) => e.type !== "placed")} />}
+        {isDemoSite() && <DemoControls number={order.number} steps={nextSteps(tracked, sellers)} started={tracked.some((e) => e.type !== "placed")} />}
       </section>
 
       <div className="hm-order-grid hm-arrive">

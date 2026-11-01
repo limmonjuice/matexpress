@@ -61,7 +61,7 @@ export function SiteHeader() {
             </Link>
             <button type="button" className="hm-cart-btn" onClick={openCart} aria-label={`Cart, ${plural(count, "item")}`}>
               <CartIcon />
-              <span className="hm-cart-word">Cart</span>
+              <span className="hm-cart-word">Cart</span>{" "}
               <span ref={badge} className="hm-cart-count">
                 {count}
               </span>

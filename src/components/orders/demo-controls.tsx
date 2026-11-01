@@ -6,7 +6,7 @@ import { demoAdvanceOrder, demoRestartOrder } from "@/lib/orders/actions";
 import { CONNECTION_ERROR } from "@/lib/orders/rules";
 import type { NextStep } from "@/lib/orders/tracking";
 
-/** Sellers and drivers aren't on the system yet, so for showing the store, this does their part. Only shown with ORDER_TIMELINE=demo. */
+/** Sellers and drivers aren't on the system yet, so for showing the store, this does their part. Only shown with SITE_MODE=demo. */
 export function DemoControls({ number, steps, started }: { number: string; steps: NextStep[]; started: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();

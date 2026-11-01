@@ -54,10 +54,3 @@ export function nextSteps(events: { type: string; sellerSlug?: string | null }[]
   if (!has("on-the-way")) return [{ type: "on-the-way", label: "Truck leaves for the site" }];
   return [{ type: "delivered", label: "Truck delivers" }];
 }
-
-/**
- * Sellers and drivers don't have their side of the system yet, so nothing else can
- * advance an order. With ORDER_TIMELINE=demo the order page offers the next steps as
- * buttons. It must stay off for real customers, who should never read invented progress.
- */
-export const demoTimelineOn = () => process.env.ORDER_TIMELINE === "demo";

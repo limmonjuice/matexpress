@@ -44,7 +44,7 @@ export function Gallery({ images, drawing, name, size }: Props) {
             </button>
           ))}
           {drawing && (
-            <button type="button" className="hm-gallery-thumb-sd" aria-pressed={onDrawing} aria-label="Show the scale drawing" onClick={() => setView(images.length)}>
+            <button type="button" className="hm-gallery-thumb-sd" aria-pressed={onDrawing} aria-label="Show the drawing to scale" onClick={() => setView(images.length)}>
               <ShopDrawing drawing={drawing} label="" />
               <span>To scale</span>
             </button>

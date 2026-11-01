@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
-import { demoTimelineOn, nextSteps, trackingView } from "./tracking";
+import { describe, expect, test } from "vitest";
+import { nextSteps, trackingView } from "./tracking";
 
 const sellers = [
   { slug: "tibay-steel", name: "Tibay Steel" },
@@ -77,16 +77,5 @@ describe("nextSteps", () => {
 
   test("an order with one seller goes straight on after they confirm", () => {
     expect(nextSteps([placed, confirmed("tibay-steel")], [sellers[0]]).map((step) => step.type)).toEqual(["collecting"]);
-  });
-});
-
-describe("demoTimelineOn", () => {
-  afterEach(() => vi.unstubAllEnvs());
-
-  test("only when switched on", () => {
-    vi.stubEnv("ORDER_TIMELINE", "");
-    expect(demoTimelineOn()).toBe(false);
-    vi.stubEnv("ORDER_TIMELINE", "demo");
-    expect(demoTimelineOn()).toBe(true);
   });
 });

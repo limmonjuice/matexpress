@@ -120,7 +120,7 @@ export function ListingView({ pathname, params: loaded, result, shown, sorts, ch
             <label className="hm-sort">
               <span>Sort by</span>
               <span className="hm-sort-box">
-                <select value={params.sort} onChange={(e) => go({ sort: e.target.value as SortKey })}>
+                <select aria-label="Sort by" value={params.sort} onChange={(e) => go({ sort: e.target.value as SortKey })}>
                   {sorts.map((sort) => (
                     <option key={sort} value={sort}>
                       {SORT_LABELS[sort]}

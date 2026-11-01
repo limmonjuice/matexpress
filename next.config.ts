@@ -26,6 +26,8 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
   // Browsers ignore this over plain HTTP. No includeSubDomains: other services on the client's domain may not have HTTPS.
   { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  // A demo's sample sellers, prices and reviews shouldn't turn up in search results. See src/lib/site-mode.ts.
+  ...(process.env.SITE_MODE === "demo" ? [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] : []),
 ];
 
 const nextConfig: NextConfig = {

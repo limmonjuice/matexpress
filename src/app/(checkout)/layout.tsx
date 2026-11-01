@@ -23,7 +23,9 @@ export default function CheckoutLayout({ children }: { children: React.ReactNode
           </Link>
         </div>
       </header>
-      <main className="hm-main">{children}</main>
+      <main id="main" className="hm-main">
+        {children}
+      </main>
       <footer className="hm-frame hm-co-foot">
         Need a hand? We&apos;re here 6 AM to 6 PM, every day. <Link href="/help/contact">Contact us</Link>
       </footer>
