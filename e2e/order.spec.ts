@@ -9,6 +9,13 @@ const [FIRST, SECOND] = CART_LINES;
 const buttons = (page: Page) => page.locator(".hm-demo button");
 const history = (page: Page) => page.locator(".hm-history li span");
 const stage = (page: Page) => page.locator(".hm-track-road").evaluate((road: HTMLElement) => Number(road.style.getPropertyValue("--hm-stage")));
+/** On a phone, how far along its road the truck has driven: 0 at the start, 1 at the end. */
+const driven = (page: Page) =>
+  page.locator(".hm-track-road").evaluate((road: HTMLElement) => {
+    const along = road.getBoundingClientRect();
+    const truck = road.querySelector(".hm-track-truck")!.getBoundingClientRect();
+    return (truck.left - along.left) / (along.width - truck.width);
+  });
 
 async function press(page: Page, label: string) {
   const button = page.getByRole("button", { name: label, exact: true });
@@ -99,6 +106,16 @@ test("an order, from checkout to delivered", async ({ page, browser }) => {
       await expect(buttons(page)).toHaveCount(2);
       const rows = await sql`select e.type from order_events e join orders o on o.id = e.order_id where o.number = ${number!}`;
       expect(rows.map((row) => row.type)).toEqual(["placed"]);
+    });
+
+    await test.step("on a phone, the truck drives along its road too", async () => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect.poll(() => driven(page)).toBeCloseTo(0.25, 2);
+      await press(page, `${FIRST.seller} confirms`);
+      await press(page, `${SECOND.seller} confirms`);
+      await press(page, "Truck starts collecting");
+      await expect.poll(() => driven(page)).toBeCloseTo(0.5, 2);
+      await page.setViewportSize({ width: 1280, height: 900 });
     });
 
     await test.step("with the demo switch off, the buyer sees the order and no controls", async () => {

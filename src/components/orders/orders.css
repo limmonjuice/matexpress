@@ -666,13 +666,12 @@
   .hm-track-road {
     --hm-truck-w: 92px;
     margin-top: 18px;
-    padding-top: 0;
+    padding-top: 50px;
   }
-  /* The road runs down the phone instead of across it. */
+  /* The stages run down the phone; the truck still drives across it, on a road of its own above them. */
   .hm-track-truck {
-    position: static;
+    left: calc(var(--hm-stage) * (100% - var(--hm-truck-w)));
     translate: none;
-    margin-bottom: 12px;
   }
   .hm-track-road ol {
     grid-template-columns: minmax(0, 1fr);
@@ -680,7 +679,14 @@
   }
   .hm-track-road ol::before,
   .hm-track-road ol::after {
-    display: none;
+    top: -15px;
+    left: 0;
+  }
+  .hm-track-road ol::before {
+    right: 0;
+  }
+  .hm-track-road ol::after {
+    width: calc(var(--hm-stage) * (100% - var(--hm-truck-w)) + var(--hm-truck-w) / 2);
   }
   .hm-track-road li {
     grid-template-columns: 30px minmax(0, 1fr);
